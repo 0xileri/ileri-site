@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { CountUp, useReveal } from './motion.jsx'
 import {
   X_URL, DM_URL, TG_URL, AVATAR, AVATAR_SM, BANNER, BANNER_SM, stats, services, packages, oneOff, steps,
   featured, builds, wins, receipts, roles, contacts, profile, whoToFollow, article, videos, projects,
@@ -134,7 +135,7 @@ function Actions({ counts }) {
 
 function Post({ children, id, pinned, label, time, thread, threadEnd, compact, counts }) {
   return (
-    <article className={`post${thread ? ' in-thread' : ''}${threadEnd ? ' thread-end' : ''}${compact ? ' compact' : ''}`} id={id}>
+    <article className={`post reveal${thread ? ' in-thread' : ''}${threadEnd ? ' thread-end' : ''}${compact ? ' compact' : ''}`} id={id}>
       {pinned && <p className="post-ctx"><I.Pin /> Pinned</p>}
       {label && !pinned && <p className="post-ctx">{label}</p>}
       <div className="post-row">
@@ -163,7 +164,7 @@ function Pinned({ go }) {
       <p>Posts on my page, KOL pushes through creators I manage, a community set up the right way, and AI videos for your launch.</p>
       <p>I build too, with hackathon wins and shipped projects of my own, so I get what you're working on. DMs open.</p>
       <div className="card stat-card">
-        {stats.map((s) => <div key={s.label}><strong>{s.value}</strong><span>{s.label}</span></div>)}
+        {stats.map((s) => <div key={s.label}><CountUp value={s.value} /><span>{s.label}</span></div>)}
       </div>
       <div className="btn-row">
         <a className="btn btn-accent" href={DM_URL} {...ext}>DM me</a>
@@ -595,12 +596,15 @@ export default function App() {
   const [active, setActive] = useState('top')
   const [expanded, setExpanded] = useState(false)
   const themeCtl = useTheme()
+  const [toTop, setToTop] = useState(false)
+  useReveal('.feed', '.reveal')
 
   useEffect(() => {
     let last = window.scrollY
     const onScroll = () => {
       const y = window.scrollY
       setScrolled(y > 40)
+      setToTop(y > 1400)
       // X style: hide the floating button while scrolling down, bring it back on scroll up
       if (Math.abs(y - last) > 8) {
         const nearEnd = y + window.innerHeight > document.documentElement.scrollHeight - 700
@@ -690,6 +694,9 @@ export default function App() {
 
       <Sidebar go={go} themeCtl={themeCtl} />
 
+      <button className={`to-top${toTop ? ' on' : ''}`} onClick={() => go('top')} aria-label="Back to top" tabIndex={toTop ? 0 : -1}>
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 4l7 7-1.4 1.4L13 7.8V20h-2V7.8l-4.6 4.6L5 11z"/></svg>
+      </button>
       <a className={`fab${fab ? '' : ' fab-hide'}`} href={DM_URL} {...ext} aria-label="DM me on X"><I.Quill size={24} /></a>
       <nav className="bottom-bar" aria-label="Mobile">
         {NAV.map(({ id, label, Icon }) => (

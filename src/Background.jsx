@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { BG_VIDEO } from './data.js'
-import { prefersReducedMotion, saveData } from './hooks.js'
+import { prefersReducedMotion } from './hooks.js'
 
 // Color scenes. Every few seconds the blobs crossfade to the next scene.
 const SCENES = [
@@ -16,63 +16,102 @@ const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), pa
 const RGB = SCENES.map((s) => s.map(hex))
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
 
-// Pick the background video source, or null to keep the canvas motion background.
-// Desktop on a good connection gets the full encode; phones get the small one.
-function pickVideo() {
-  if (!BG_VIDEO.enabled || prefersReducedMotion() || saveData()) return null
+// Play the seaport loop on any desktop and normal mobile unless the visitor
+// asked for reduced motion or has data-saver on. Do not gate on effectiveType,
+// deviceMemory, or a late idle callback — those hid the video on desktop Chrome.
+export function pickVideo() {
+  if (typeof window === 'undefined') return null
+  if (!BG_VIDEO.enabled) return null
+  if (prefersReducedMotion()) return null
+  try {
+    if (navigator.connection && navigator.connection.saveData) return null
+  } catch { /* ignore */ }
   const small = window.matchMedia('(max-width: 700px)').matches
-  if (small) return BG_VIDEO.mobile ? { mp4: BG_VIDEO.mobile } : null
+  if (small) return { mp4: BG_VIDEO.mobile || BG_VIDEO.mp4 }
   return { webm: BG_VIDEO.webm, mp4: BG_VIDEO.mp4 }
 }
 
-function BgVideo({ onPlaying }) {
+function BgVideo({ onShow, onPlaying }) {
   const ref = useRef(null)
+  const pickedRef = useRef(null)
+  if (pickedRef.current === null) pickedRef.current = pickVideo()
+  const picked = pickedRef.current
   const [src, setSrc] = useState(null)
-  const [on, setOn] = useState(false)
-  // Wait until after first paint so the 1MB loop does not fight the banner for LCP.
+  const shown = useRef(false)
+  const played = useRef(false)
+
+  const markShow = () => {
+    if (shown.current) return
+    shown.current = true
+    onShow()
+  }
+  const markPlay = () => {
+    if (played.current) return
+    played.current = true
+    onPlaying()
+  }
+
   useEffect(() => {
-    const picked = pickVideo()
     if (!picked) return
-    let idle, t
-    const start = () => setSrc(picked)
-    const afterLoad = () => {
-      if (typeof requestIdleCallback === 'function') idle = requestIdleCallback(start, { timeout: 1800 })
-      else t = setTimeout(start, 800)
-    }
-    if (document.readyState === 'complete') afterLoad()
-    else window.addEventListener('load', afterLoad, { once: true })
-    return () => {
-      window.removeEventListener('load', afterLoad)
-      if (idle && typeof cancelIdleCallback === 'function') cancelIdleCallback(idle)
-      clearTimeout(t)
-    }
-  }, [])
+    markShow()
+    const id = requestAnimationFrame(() => setSrc(picked))
+    return () => cancelAnimationFrame(id)
+  }, [picked])
+
   useEffect(() => {
     const v = ref.current
-    if (!v) return
-    const onVis = () => { if (document.hidden) v.pause(); else v.play().catch(() => {}) }
+    if (!v || !src) return
+    const tryPlay = () => {
+      const p = v.play()
+      if (p && typeof p.then === 'function') p.then(markPlay).catch(() => {})
+    }
+    const onCanPlay = () => tryPlay()
+    const onPlayingEv = () => markPlay()
+    v.addEventListener('canplay', onCanPlay)
+    v.addEventListener('playing', onPlayingEv)
+    tryPlay()
+    const onVis = () => { if (document.hidden) v.pause(); else tryPlay() }
     document.addEventListener('visibilitychange', onVis)
-    return () => document.removeEventListener('visibilitychange', onVis)
+    const evs = ['pointerdown', 'keydown', 'touchstart', 'click']
+    evs.forEach((e) => window.addEventListener(e, tryPlay, { passive: true }))
+    return () => {
+      v.removeEventListener('canplay', onCanPlay)
+      v.removeEventListener('playing', onPlayingEv)
+      document.removeEventListener('visibilitychange', onVis)
+      evs.forEach((e) => window.removeEventListener(e, tryPlay))
+    }
   }, [src])
-  if (!src) return null
+
+  if (!picked) return null
   return (
-    <video
-      ref={ref}
-      className={`bg-video${on ? ' on' : ''}`}
-      muted autoPlay loop playsInline preload="metadata" poster={BG_VIDEO.poster}
-      onPlaying={() => { setOn(true); onPlaying() }}
-      aria-hidden="true" tabIndex={-1}
-    >
-      {src.webm && <source src={src.webm} type="video/webm" />}
-      {src.mp4 && <source src={src.mp4} type="video/mp4" />}
-    </video>
+    <>
+      <img className="bg-video bg-poster" src={BG_VIDEO.poster} alt="" aria-hidden="true" />
+      {src && (
+        <video
+          ref={ref}
+          className="bg-video"
+          muted
+          autoPlay
+          loop
+          playsInline
+          preload="auto"
+          poster={BG_VIDEO.poster}
+          aria-hidden="true"
+          tabIndex={-1}
+        >
+          {src.webm && <source src={src.webm} type="video/webm" />}
+          {src.mp4 && <source src={src.mp4} type="video/mp4" />}
+        </video>
+      )}
+    </>
   )
 }
 
 export default function Background() {
   const ref = useRef(null)
   const stopRef = useRef(() => {})
-  const [videoOn, setVideoOn] = useState(false)
+  const [hasVideo, setHasVideo] = useState(() => !!pickVideo())
+  const [playing, setPlaying] = useState(false)
 
   useEffect(() => {
     const canvas = ref.current
@@ -156,9 +195,12 @@ export default function Background() {
   }, [])
 
   return (
-    <div className={`bg${videoOn ? ' bg-has-video' : ''}`} aria-hidden="true">
+    <div className={`bg${hasVideo ? ' bg-has-video' : ''}${playing ? ' bg-video-playing' : ''}`} aria-hidden="true">
       <canvas ref={ref} className="bg-canvas" />
-      <BgVideo onPlaying={() => { if (!videoOn) { setVideoOn(true); setTimeout(() => stopRef.current(), 1200) } }} />
+      <BgVideo
+        onShow={() => setHasVideo(true)}
+        onPlaying={() => { setPlaying(true); setTimeout(() => stopRef.current(), 1200) }}
+      />
       <div className="bg-shade" />
       <div className="bg-vignette" />
       <div className="bg-grain" />
