@@ -1,273 +1,435 @@
+import { useEffect, useState } from 'react'
 import {
-  X_URL, AVATAR, stats, ecosystems, services, packages, oneOff, steps,
-  featured, builds, wins, receipts, roles, contacts,
+  X_URL, AVATAR, AI_VIDEO_URL, stats, ecosystems, services, packages, oneOff, steps,
+  featured, builds, wins, receipts, roles, contacts, profile, whoToFollow,
 } from './data.js'
+import * as I from './icons.jsx'
 
 const ext = { target: '_blank', rel: 'noopener noreferrer' }
 
-function Arrow() {
+// Real post date from the post ID (snowflake), so dates are never made up.
+const dateFromUrl = (url) => {
+  const m = url && url.match(/status\/(\d+)/)
+  if (!m) return null
+  const ms = Number(BigInt(m[1]) >> 22n) + 1288834974657
+  return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+const NAV = [
+  { id: 'top', label: 'Home', Icon: I.Home },
+  { id: 'services', label: 'Services', Icon: I.Bolt },
+  { id: 'packages', label: 'Packages', Icon: I.Tag },
+  { id: 'proof', label: 'Proof', Icon: I.Trophy },
+  { id: 'how', label: 'How it works', Icon: I.Steps },
+  { id: 'contact', label: 'Contact', Icon: I.Mail },
+]
+const MOBILE_NAV = NAV.filter((n) => n.id !== 'how')
+const TABS = [
+  { id: 'posts', label: 'Posts' },
+  { id: 'packages', label: 'Packages' },
+  { id: 'proof', label: 'Proof' },
+  { id: 'media', label: 'Media' },
+]
+
+function Avatar({ size = 40, src = AVATAR, letter }) {
+  if (letter) return <span className="avatar avatar-letter" style={{ width: size, height: size, fontSize: size * 0.42 }}>{letter}</span>
+  return <img className="avatar" src={src} alt="" width={size} height={size} style={{ width: size, height: size }} />
+}
+
+function Actions() {
+  const [liked, setLiked] = useState(false)
+  const [reposted, setReposted] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const share = () => {
+    navigator.clipboard?.writeText('https://ileri.lol').then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1400)
+    }).catch(() => {})
+  }
   return (
-    <svg className="arrow" width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-      <path d="M3 11 11 3M5 3h6v6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <div className="actions">
+      <a className="act act-reply" href={X_URL} {...ext} aria-label="Reply with a DM"><I.Reply size={18} /></a>
+      <button className={`act act-repost${reposted ? ' on' : ''}`} onClick={() => setReposted(!reposted)} aria-pressed={reposted} aria-label="Repost">
+        <I.Repost size={18} />{reposted && <span className="act-note">nice</span>}
+      </button>
+      <button className={`act act-like${liked ? ' on' : ''}`} onClick={() => setLiked(!liked)} aria-pressed={liked} aria-label="Like">
+        <span className="heart"><I.Heart size={18} filled={liked} /></span>{liked && <span className="act-note">ty ❤️</span>}
+      </button>
+      <span className="act act-views" aria-hidden="true"><I.Views size={18} /></span>
+      <button className="act act-share" onClick={share} aria-label="Copy site link">
+        <I.Share size={18} />{copied && <span className="act-note">copied</span>}
+      </button>
+    </div>
   )
 }
 
-function SectionHead({ n, kicker, title, sub }) {
+function Post({ children, id, pinned, label, time, thread, threadEnd, compact }) {
   return (
-    <header className="section-head">
-      <p className="eyebrow"><span>{n}</span> {kicker}</p>
-      <h2>{title}</h2>
-      {sub && <p className="section-sub">{sub}</p>}
-    </header>
-  )
-}
-
-function Nav() {
-  return (
-    <nav className="nav" aria-label="Main">
-      <div className="nav-inner">
-        <a href="#top" className="logo">ILERI<span>.</span></a>
-        <div className="nav-links">
-          <a href="#services">Services</a>
-          <a href="#packages">Packages</a>
-          <a href="#proof">Proof</a>
-          <a href="#how">How it works</a>
-          <a href="#contact">Contact</a>
+    <article className={`post${thread ? ' in-thread' : ''}${threadEnd ? ' thread-end' : ''}${compact ? ' compact' : ''}`} id={id}>
+      {pinned && <p className="post-ctx"><I.Pin /> Pinned</p>}
+      {label && !pinned && <p className="post-ctx">{label}</p>}
+      <div className="post-row">
+        <div className="post-gutter">
+          <Avatar />
+          {thread && !threadEnd && <span className="thread-line" />}
         </div>
-        <a className="btn btn-solid btn-sm" href={X_URL} {...ext}>DM on X</a>
+        <div className="post-main">
+          <header className="post-head">
+            <strong>{profile.name}</strong>
+            <span className="dim">{profile.handle}</span>
+            {time && <><span className="dim">·</span><span className="dim">{time}</span></>}
+          </header>
+          <div className="post-body">{children}</div>
+          <Actions />
+        </div>
       </div>
-    </nav>
+    </article>
   )
 }
 
-function Hero() {
+function Pinned({ go }) {
   return (
-    <section className="hero" id="top">
-      <div className="wrap hero-grid">
-        <div>
-          <p className="pill">DMs open · Growth · KOLs · Community · AI video</p>
-          <h1>
-            Building something early?<br />
-            <em>Let's get it seen.</em>
-          </h1>
-          <p className="lead">
-            I help early AI and crypto projects grow on X. Posts on my page, KOL pushes through creators I manage,
-            a community set up the right way, and AI videos for your launch.
-          </p>
-          <p className="lead small">
-            I build too, with hackathon wins and shipped projects of my own, so I get what you're working on.
-          </p>
-          <div className="cta-row">
-            <a className="btn btn-solid" href={X_URL} {...ext}>DM me on X <Arrow /></a>
-            <a className="btn btn-line" href="#packages">See packages</a>
-          </div>
-        </div>
-        <aside className="card id-card">
-          <div className="id-top">
-            <img src={AVATAR} alt="ileri's profile picture" width="72" height="72" />
-            <div>
-              <p className="id-name">ileri</p>
-              <a className="id-handle" href={X_URL} {...ext}>@0xileri</a>
+    <Post id="offer" pinned>
+      <p>I help early AI and crypto projects grow on X.</p>
+      <p>Posts on my page, KOL pushes through creators I manage, a community set up the right way, and AI videos for your launch.</p>
+      <p>I build too, with hackathon wins and shipped projects of my own, so I get what you're working on. DMs open.</p>
+      <div className="card stat-card">
+        {stats.map((s) => <div key={s.label}><strong>{s.value}</strong><span>{s.label}</span></div>)}
+      </div>
+      <div className="btn-row">
+        <a className="btn btn-accent" href={X_URL} {...ext}>DM me</a>
+        <button className="btn btn-outline" onClick={() => go('packages', 'packages')}>See packages</button>
+      </div>
+    </Post>
+  )
+}
+
+function ServicesThread() {
+  return (
+    <section id="services" aria-label="Services">
+      <Post thread label="Thread">
+        <p>What I do for your project. Four things, pick one or stack them into one campaign 🧵</p>
+      </Post>
+      {services.map((s, i) => (
+        <Post key={s.n} thread threadEnd={i === services.length - 1}>
+          <p className="post-title">{i + 1}/ {s.title}</p>
+          <p>{s.body}</p>
+          <ul className="chips">{s.tags.map((t) => <li key={t}>{t}</li>)}</ul>
+          {s.link && <a className="inline-link" href={s.link.href} {...ext}>{s.link.label} <I.Ext /></a>}
+        </Post>
+      ))}
+    </section>
+  )
+}
+
+function Poll() {
+  const [pick, setPick] = useState(null)
+  const chosen = packages.find((p) => p.name === pick)
+  return (
+    <div className="poll">
+      {packages.map((p) => (
+        <button key={p.name} className={`poll-opt${pick === p.name ? ' picked' : ''}${pick && pick !== p.name ? ' faded' : ''}`} onClick={() => setPick(p.name)}>
+          <span className="poll-fill" style={{ width: pick === p.name ? '100%' : '0%' }} />
+          <span className="poll-label">{p.name} · {p.price}/month</span>
+          {pick === p.name && <I.Check />}
+        </button>
+      ))}
+      <p className="dim poll-foot">
+        {chosen
+          ? <>Good pick. <a href={X_URL} {...ext}>DM me about {chosen.name}</a> and we'll get going.</>
+          : 'Tap one. No one sees your vote, it just helps you decide.'}
+      </p>
+    </div>
+  )
+}
+
+function PackagesBlock() {
+  return (
+    <section id="packages" aria-label="Packages">
+      <Post label="Packages">
+        <p>Monthly packages, prices in USD. Which one fits your project?</p>
+        <Poll />
+      </Post>
+      {packages.map((p) => (
+        <Post key={p.name}>
+          <div className={`card plan${p.featured ? ' plan-featured' : ''}`}>
+            <div className="plan-top">
+              <span className="plan-name">{p.name}</span>
+              <span className="plan-price"><strong>{p.price}</strong>/month</span>
             </div>
+            <ul className="checks">{p.items.map((it) => <li key={it}><I.Check /> {it}</li>)}</ul>
+            <a className={`btn ${p.featured ? 'btn-accent' : 'btn-outline'} btn-block`} href={X_URL} {...ext}>Ask about {p.name}</a>
           </div>
-          <ul className="stats">
-            {stats.map((s) => (
-              <li key={s.label}><strong>{s.value}</strong><span>{s.label}</span></li>
-            ))}
-          </ul>
-        </aside>
-      </div>
-      <div className="marquee" aria-label="Ecosystems I've worked with or won in">
-        <div className="marquee-track">
-          {[...ecosystems, ...ecosystems].map((e, i) => <span key={i} aria-hidden={i >= ecosystems.length}>{e}</span>)}
+        </Post>
+      ))}
+      <Post>
+        <p>Just need a single post or a video? That works too.</p>
+        <div className="card table">
+          {oneOff.map((o) => <div key={o.item}><span>{o.item}</span><strong>{o.price}</strong></div>)}
         </div>
-      </div>
+        <p className="note">Very early team? I'm open to part cash, part tokens.</p>
+      </Post>
     </section>
   )
 }
 
-function Services() {
+function HowThread() {
   return (
-    <section className="section" id="services">
-      <div className="wrap">
-        <SectionHead n="01" kicker="Services" title="What I do for your project" sub="Four things. Pick one, or stack them into one campaign." />
-        <div className="grid-4">
-          {services.map((s) => (
-            <article className="card service" key={s.n}>
-              <p className="num">{s.n}</p>
-              <h3>{s.title}</h3>
-              <p>{s.body}</p>
-              <ul className="tags">{s.tags.map((t) => <li key={t}>{t}</li>)}</ul>
-              {s.link && <a className="text-link" href={s.link.href} {...ext}>{s.link.label} <Arrow /></a>}
-            </article>
-          ))}
-        </div>
-      </div>
+    <section id="how" aria-label="How it works">
+      <Post thread label="Thread">
+        <p>How working with me goes. Pitch, plan, launch 👇</p>
+      </Post>
+      {steps.map((s, i) => (
+        <Post key={s.n} thread threadEnd={i === steps.length - 1}>
+          <p className="post-title">{i + 1}/ {s.title}</p>
+          <p>{s.body}</p>
+        </Post>
+      ))}
     </section>
   )
 }
 
-function Packages() {
+function ProofBlock() {
+  const [more, setMore] = useState(false)
+  const rest = wins.filter((w) => !featured.some((f) => w.name === f.name))
   return (
-    <section className="section deep" id="packages">
-      <div className="wrap">
-        <SectionHead n="02" kicker="Packages" title="Monthly packages" sub="Prices in USD, billed monthly. Want something smaller? One-off work is below." />
-        <div className="grid-3">
-          {packages.map((p) => (
-            <article className={`card plan${p.featured ? ' plan-featured' : ''}`} key={p.name}>
-              <h3>{p.name}</h3>
-              <p className="price"><strong>{p.price}</strong><span>/month</span></p>
-              <ul className="checks">{p.items.map((i) => <li key={i}>{i}</li>)}</ul>
-              <a className={`btn ${p.featured ? 'btn-solid' : 'btn-line-light'}`} href={X_URL} {...ext}>Ask about {p.name}</a>
-            </article>
-          ))}
-        </div>
-        <div className="oneoff">
-          <div>
-            <h3>One-off</h3>
-            <p>Just need a single post or a video? That works too.</p>
-          </div>
-          <ul>
-            {oneOff.map((o) => (
-              <li key={o.item}><span>{o.item}</span><strong>{o.price}</strong></li>
-            ))}
-          </ul>
-        </div>
-        <p className="token-note">Very early team? I'm open to part cash, part tokens.</p>
-      </div>
+    <section id="proof" aria-label="Proof">
+      <Post label="Receipts">
+        <p>The receipts. Wins from open campaigns and hackathons, judged against everyone else who entered. Each one links to the public post.</p>
+      </Post>
+      {featured.map((f) => (
+        <Post key={f.name} time={dateFromUrl(f.href)}>
+          <p>{f.body} <span className="badge">{f.badge}</span></p>
+          <a className="media" href={f.href} {...ext}>
+            <img src={f.img} alt={`${f.name} ${f.badge} announcement`} loading="lazy" />
+          </a>
+          <a className="inline-link" href={f.href} {...ext}>View the original post <I.Ext /></a>
+        </Post>
+      ))}
+      {more && rest.map((w) => (
+        <Post key={w.name} compact time={dateFromUrl(w.href)}>
+          <p><strong>{w.name}</strong>: {w.result} <span className="badge badge-dim">{w.type}</span></p>
+          <a className="inline-link" href={w.href} {...ext}>View the original post <I.Ext /></a>
+        </Post>
+      ))}
+      <button className="show-more" onClick={() => setMore(!more)} aria-expanded={more}>
+        {more ? 'Show fewer posts' : `Show ${rest.length} more wins`}
+      </button>
     </section>
   )
 }
 
-function Proof() {
+function ShippedBlock() {
   return (
-    <section className="section" id="proof">
-      <div className="wrap">
-        <SectionHead n="03" kicker="Proof" title="The receipts" sub="Wins from open campaigns and hackathons, judged against everyone else who entered. Each one links to the public post." />
-
-        <div className="grid-3">
-          {featured.map((f) => (
-            <a className="card win" key={f.name} href={f.href} {...ext}>
-              <img src={f.img} alt={`${f.name} ${f.badge} announcement`} loading="lazy" />
-              <div className="win-body">
-                <p className="kicker">{f.kicker}</p>
-                <h3>{f.name} <span className="badge">{f.badge}</span></h3>
-                <p>{f.body}</p>
-              </div>
-            </a>
-          ))}
-        </div>
-
-        <h3 className="sub-title">Stuff I've shipped</h3>
-        <p className="section-sub">Projects I built and shipped myself. Click through to check them.</p>
-        <div className="grid-4">
-          {builds.map((b) => (
-            <article className="card build" key={b.name}>
-              <p className="kicker">{b.tag}</p>
-              <h3>{b.name}</h3>
-              <p>{b.body}</p>
-              <a className="text-link" href={b.href} {...ext}>{b.cta} <Arrow /></a>
-            </article>
-          ))}
-        </div>
-
-        <h3 className="sub-title">Full list</h3>
-        <ol className="index">
-          {wins.map((w, i) => (
-            <li key={w.name}>
-              <a href={w.href} {...ext}>
-                <span className="idx">{String(i + 1).padStart(2, '0')}</span>
-                <span className="idx-name">{w.name}</span>
-                <span className="idx-type">{w.type}</span>
-                <span className="idx-result">{w.result}</span>
-                <Arrow />
-              </a>
-            </li>
-          ))}
-        </ol>
-
-        <div className="roles">
-          <p>Current roles:</p>
-          {roles.map((r) => <span key={r.name}><strong>{r.name}</strong> {r.role}</span>)}
-        </div>
-
-        <div className="gallery">
-          {receipts.map((r) => (
-            <a key={r.name} href={r.href} {...ext} className="shot">
-              <img src={r.img} alt={`${r.name} ${r.label} screenshot`} loading="lazy" />
-              <span><strong>{r.name}</strong> {r.label}</span>
-            </a>
-          ))}
-        </div>
-      </div>
+    <section id="shipped" aria-label="Shipped projects">
+      <Post label="Builds">
+        <p>Projects I built and shipped myself. Click through to check them.</p>
+      </Post>
+      {builds.map((b) => (
+        <Post key={b.name} time={dateFromUrl(b.href)}>
+          <p>{b.tag}</p>
+          <a className="card quote" href={b.href} {...ext}>
+            <div className="quote-head">
+              <Avatar size={20} letter={b.name[0]} />
+              <strong>{b.name}</strong>
+            </div>
+            <p>{b.body}</p>
+            <span className="inline-link">{b.cta} <I.Ext /></span>
+          </a>
+        </Post>
+      ))}
+      <Post>
+        <p>Current roles:</p>
+        <ul className="roles">{roles.map((r) => <li key={r.name}><strong>{r.name}</strong><span className="dim">{r.role}</span></li>)}</ul>
+      </Post>
     </section>
   )
 }
 
-function How() {
+function ContactBlock() {
   return (
-    <section className="section soft" id="how">
-      <div className="wrap">
-        <SectionHead n="04" kicker="How it works" title="Pitch, plan, launch" />
-        <div className="grid-3 steps">
-          {steps.map((s) => (
-            <article className="card step" key={s.n}>
-              <p className="num">Step {s.n}</p>
-              <h3>{s.title}</h3>
-              <p>{s.body}</p>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function Contact() {
-  return (
-    <section className="section deep contact" id="contact">
-      <div className="wrap contact-grid">
-        <div>
-          <p className="eyebrow"><span>05</span> Contact</p>
-          <h2>Got something early?<br /><em>Send me a DM.</em></h2>
-          <p className="section-sub">Tell me what you're building and what you need. I'll tell you straight if I can help.</p>
-          <a className="btn btn-solid" href={X_URL} {...ext}>DM me on X <Arrow /></a>
-        </div>
-        <ul className="contacts">
+    <section id="contact" aria-label="Contact">
+      <Post label="Contact">
+        <p>Got something early? Send me a DM.</p>
+        <p>Tell me what you're building and what you need. I'll tell you straight if I can help.</p>
+        <div className="card contacts">
           {contacts.map((c) => (
-            <li key={c.label}>
-              <a href={c.href} {...(c.href.startsWith('http') ? ext : {})} className={c.primary ? 'primary' : ''}>
-                <span>{c.label}</span><strong>{c.value}</strong>
-              </a>
-            </li>
+            <a key={c.label} href={c.href} {...(c.href.startsWith('http') ? ext : {})} className={c.primary ? 'primary' : ''}>
+              <span className="dim">{c.label}</span><strong>{c.value}</strong>
+            </a>
           ))}
-        </ul>
-      </div>
+        </div>
+      </Post>
+      <p className="end">You're all caught up ✨</p>
     </section>
+  )
+}
+
+function MediaGrid() {
+  return (
+    <section id="media" className="media-grid" aria-label="Media">
+      {receipts.map((r) => (
+        <a key={r.name} href={r.href} {...ext} className="tile">
+          <img src={r.img} alt={`${r.name} ${r.label} screenshot`} loading="lazy" />
+          <span>{r.name} · {r.label}</span>
+        </a>
+      ))}
+      <a href={AI_VIDEO_URL} {...ext} className="tile tile-video">
+        <span className="play">▶</span>
+        <span>AI video · recent work</span>
+      </a>
+    </section>
+  )
+}
+
+function ProfileHeader({ tab, setTab }) {
+  return (
+    <div className="profile" id="top">
+      <div className="banner" aria-hidden="true">
+        <span className="banner-word">ILERI.</span>
+      </div>
+      <div className="profile-inner">
+        <div className="profile-row">
+          <img className="profile-avatar" src={AVATAR} alt="ileri's profile picture" width="134" height="134" />
+          <a className="btn btn-light" href={X_URL} {...ext}>Follow</a>
+        </div>
+        <h1>{profile.name}</h1>
+        <p className="dim">{profile.handle}</p>
+        <p className="bio">{profile.bio}</p>
+        <p className="meta dim">
+          <span><I.Link /> <a href="https://ileri.lol">{profile.site}</a></span>
+          <span><I.Calendar /> DMs open</span>
+        </p>
+        <p className="follow-row">
+          <a href={X_URL} {...ext}><strong>{profile.following}</strong> <span className="dim">Following</span></a>
+          <a href={X_URL} {...ext}><strong>{profile.followers}</strong> <span className="dim">Followers</span></a>
+        </p>
+      </div>
+      <div className="tabs" role="tablist">
+        {TABS.map((t) => (
+          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Sidebar() {
+  return (
+    <aside className="right">
+      <a className="search" href="#proof"><I.Search /> <span>Search the receipts</span></a>
+      <div className="box">
+        <h2>What's happening</h2>
+        {roles.map((r) => (
+          <div className="trend" key={r.name}>
+            <span className="dim">Current role</span>
+            <strong>{r.name}</strong>
+            <span className="dim">{r.role}</span>
+          </div>
+        ))}
+        <div className="trend">
+          <span className="dim">Ecosystems worked with or won in</span>
+          <div className="eco">{ecosystems.map((e) => <span key={e}>{e}</span>)}</div>
+        </div>
+      </div>
+      <div className="box">
+        <h2>Who to follow</h2>
+        {whoToFollow.map((w) => (
+          <a className="wtf" key={w.handle} href={w.href} {...ext}>
+            <Avatar size={40} src={w.avatar} letter={w.letter} />
+            <span className="wtf-text"><strong>{w.name}</strong><span className="dim">{w.handle}</span></span>
+            <span className="btn btn-light btn-sm">{w.cta}</span>
+          </a>
+        ))}
+      </div>
+      <p className="legal dim">© 2026 ILERI · ileri's personal site, styled like a timeline. Not affiliated with any social network.</p>
+    </aside>
   )
 }
 
 export default function App() {
+  const [tab, setTab] = useState('posts')
+  const [scrolled, setScrolled] = useState(false)
+  const [active, setActive] = useState('top')
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 40)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  const go = (id, nextTab = 'posts') => {
+    setTab(nextTab)
+    setActive(id)
+    requestAnimationFrame(() => {
+      const el = document.getElementById(id === 'top' ? 'top' : id)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+  const changeTab = (t) => {
+    setTab(t)
+    const el = document.querySelector('.tabs')
+    if (el && window.scrollY > el.offsetTop) window.scrollTo({ top: el.offsetTop - 53 })
+  }
+
   return (
-    <>
+    <div className="shell">
       <a href="#main" className="skip">Skip to content</a>
-      <Nav />
-      <main id="main">
-        <Hero />
-        <Services />
-        <Packages />
-        <Proof />
-        <How />
-        <Contact />
-      </main>
-      <footer className="footer">
-        <div className="wrap footer-inner">
-          <a href="#top" className="logo">ILERI<span>.</span></a>
-          <p>© 2026 ILERI · Growth, KOL campaigns and AI video for early AI and crypto projects</p>
-          <a href="#top">Back to top</a>
+
+      <nav className="rail" aria-label="Main">
+        <a href="#top" className="rail-logo" onClick={(e) => { e.preventDefault(); go('top') }}>ILERI<span>.</span></a>
+        {NAV.map(({ id, label, Icon }) => (
+          <a key={id} href={`#${id}`} className={`rail-item${active === id ? ' active' : ''}`} onClick={(e) => { e.preventDefault(); go(id) }}>
+            <Icon size={26} /><span>{label}</span>
+          </a>
+        ))}
+        <a className="btn btn-accent rail-post" href={X_URL} {...ext}><span>DM me</span><I.Quill size={24} /></a>
+        <a className="rail-me" href={X_URL} {...ext}>
+          <Avatar size={40} />
+          <span><strong>{profile.name}</strong><span className="dim">{profile.handle}</span></span>
+        </a>
+      </nav>
+
+      <main className="center" id="main">
+        <header className={`top-bar${scrolled ? ' scrolled' : ''}`}>
+          <a href="#top" className="mobile-avatar" onClick={(e) => { e.preventDefault(); go('top') }}><Avatar size={32} /></a>
+          <div>
+            <strong>{profile.name}</strong>
+            <span className="dim">Growth for early AI and crypto projects</span>
+          </div>
+        </header>
+
+        <ProfileHeader tab={tab} setTab={changeTab} />
+
+        <div className="feed">
+          {tab === 'posts' && <>
+            <Pinned go={go} />
+            <ServicesThread />
+            <PackagesBlock />
+            <HowThread />
+            <ProofBlock />
+            <ShippedBlock />
+            <ContactBlock />
+          </>}
+          {tab === 'packages' && <><PackagesBlock /><ContactBlock /></>}
+          {tab === 'proof' && <><ProofBlock /><ShippedBlock /></>}
+          {tab === 'media' && <MediaGrid />}
         </div>
-      </footer>
-    </>
+      </main>
+
+      <Sidebar />
+
+      <a className="fab" href={X_URL} {...ext} aria-label="DM me"><I.Quill size={24} /></a>
+      <nav className="bottom-bar" aria-label="Mobile">
+        {MOBILE_NAV.map(({ id, label, Icon }) => (
+          <a key={id} href={`#${id}`} aria-label={label} className={active === id ? 'active' : ''} onClick={(e) => { e.preventDefault(); go(id) }}>
+            <Icon size={24} />
+          </a>
+        ))}
+      </nav>
+    </div>
   )
 }

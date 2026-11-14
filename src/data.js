@@ -177,3 +177,20 @@ export const contacts = [
   { label: 'TikTok', value: '@0xileri', href: 'https://www.tiktok.com/@0xileri' },
   { label: 'Instagram', value: '@0xileri', href: 'https://www.instagram.com/0xileri' },
 ]
+
+// Profile header. Counts checked on X on Nov 14, 2026 (10,683 followers, 2,494 following).
+export const profile = {
+  name: 'ileri 𖣂',
+  handle: '@0xileri',
+  bio: 'Growth for early AI and crypto projects. Posts on my page, KOL campaigns, community setup and AI video. Builder with a $3,000 OKX hackathon win.',
+  site: 'ileri.lol',
+  followers: '10.6K+',
+  following: '2.4K',
+}
+
+export const whoToFollow = [
+  { name: 'ileri 𖣂', handle: '@0xileri', href: X_URL, avatar: avatar, cta: 'Follow' },
+  { name: 'SpactVault', handle: '@spactvault', href: 'https://x.com/spactvault', letter: 'S', cta: 'Follow' },
+  { name: 'ileri on GitHub', handle: 'github.com/0xileri', href: 'https://github.com/0xileri', letter: 'G', cta: 'View' },
+  { name: 'ileri on YouTube', handle: 'youtube.com/@0xileri', href: 'https://youtube.com/@0xileri', letter: 'Y', cta: 'View' },
+]
