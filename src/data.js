@@ -194,7 +194,7 @@ export const whoToFollow = [
   { name: 'ileri 𖣂', handle: '@0xileri', href: X_URL, avatar: avatar, cta: 'Follow' },
   { name: 'SpactVault', handle: '@spactvault', href: 'https://x.com/spactvault', letter: 'S', cta: 'Follow' },
   { name: 'ileri on GitHub', handle: 'github.com/0xileri', href: 'https://github.com/0xileri', letter: 'G', cta: 'View' },
-  { name: 'ileri on YouTube', handle: 'youtube.com/@0xileri', href: 'https://youtube.com/@0xileri', letter: 'Y', cta: 'View' },
+  { name: 'ileri on Telegram', handle: 't.me/oxileri', href: 'https://t.me/oxileri', letter: 'T', cta: 'Message' },
 ]
 
 // Real X article, stats from fxtwitter on Nov 14, 2026.
