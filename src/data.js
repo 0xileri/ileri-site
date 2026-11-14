@@ -1,4 +1,5 @@
-import avatar from './assets/avatar.jpg'
+import avatar from './assets/avatar-x.jpg'
+import banner from './assets/banner-x.jpg'
 import launchmynft from './assets/launchmynft.jpg'
 import bungee from './assets/bungee.jpg'
 import perlelabs from './assets/perlelabs.jpg'
@@ -9,6 +10,7 @@ import altura from './assets/altura.jpg'
 
 export const X_URL = 'https://x.com/0xileri'
 export const AVATAR = avatar
+export const BANNER = banner // current @0xileri X banner (1500x500)
 export const AI_VIDEO_URL = 'https://x.com/0xileri/status/2088141897906680180'
 
 const post = (id) => `https://x.com/0xileri/status/${id}`

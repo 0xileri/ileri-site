@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  X_URL, AVATAR, AI_VIDEO_URL, stats, ecosystems, services, packages, oneOff, steps,
+  X_URL, AVATAR, BANNER, AI_VIDEO_URL, stats, ecosystems, services, packages, oneOff, steps,
   featured, builds, wins, receipts, roles, contacts, profile, whoToFollow, article,
 } from './data.js'
 import * as I from './icons.jsx'
@@ -309,8 +309,8 @@ function MediaGrid() {
 function ProfileHeader({ tab, setTab }) {
   return (
     <div className="profile" id="top">
-      <div className="banner" aria-hidden="true">
-        <span className="banner-word">ILERI.</span>
+      <div className="banner">
+        <img src={BANNER} alt="ileri's X banner" width="1500" height="500" />
       </div>
       <div className="profile-inner">
         <div className="profile-row">

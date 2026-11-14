@@ -43,7 +43,7 @@ export default function Background() {
     }
 
     const draw = (now) => {
-      const t = now - start
+      const t = Math.max(0, now - start)
       const cycle = HOLD + FADE
       const idx = Math.floor(t / cycle) % RGB.length
       const into = t % cycle
