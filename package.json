@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node server.mjs"
+    "start": "node server.mjs",
+    "fetch-posts": "node scripts/fetch-posts.mjs"
   },
   "dependencies": {
     "compression": "^1.8.0",

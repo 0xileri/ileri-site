@@ -5,6 +5,8 @@ import {
 } from './data.js'
 import * as I from './icons.jsx'
 import Background from './Background.jsx'
+import XEmbed from './XEmbed.jsx'
+import { postIdFrom, mediaThumb, getPost } from './posts-lib.js'
 import { useTheme, THEME_LABELS, prefersReducedMotion, saveData } from './hooks.js'
 
 const ext = { target: '_blank', rel: 'noopener noreferrer' }
@@ -48,10 +50,6 @@ function Linkify({ text }) {
 function Avatar({ size = 40, src = AVATAR_SM, letter }) {
   if (letter) return <span className="avatar avatar-letter" style={{ width: size, height: size, fontSize: size * 0.42 }}>{letter}</span>
   return <img className="avatar" src={src} alt="" width={size} height={size} style={{ width: size, height: size }} loading="lazy" decoding="async" />
-}
-
-function Img({ img, alt, className, sizes = '(max-width: 700px) 92vw, 520px' }) {
-  return <img className={className} src={img.src} srcSet={img.srcSet} sizes={sizes} width={img.w} height={img.h} alt={alt} loading="lazy" decoding="async" />
 }
 
 /* Hover cards (desktop only, CSS gated on hover-capable pointers) */
@@ -214,25 +212,12 @@ function VideoPost({ v, pinnedLabel }) {
   )
 }
 
-function ArticleCard() {
-  return (
-    <a className="card article" href={article.href} {...ext}>
-      <Img img={article.cover} alt="Cover image for the article" />
-      <div className="article-body">
-        <span className="article-tag"><I.Steps size={14} /> Article</span>
-        <h2>{article.title}</h2>
-        <p className="dim">{article.preview}</p>
-        <span className="inline-link">Read the article <I.Ext /></span>
-      </div>
-    </a>
-  )
-}
-
 function ArticlePost() {
+  const p = getPost(postIdFrom(article.href))
   return (
-    <Post id="ai-video" label="Article" time={dateFromUrl(article.href)} counts={article.counts}>
+    <Post id="ai-video" label="Article" time={(p && p.created) || dateFromUrl(article.href)}>
       <p>wrote down exactly how I make my AI videos, start to finish. if you're new to it, start here 👇</p>
-      <ArticleCard />
+      <XEmbed id={postIdFrom(article.href)} href={article.href} />
     </Post>
   )
 }
@@ -339,7 +324,8 @@ function LogoRow() {
 
 function ProofBlock({ full }) {
   const [more, setMore] = useState(false)
-  const rest = wins.filter((w) => !featured.some((f) => w.name === f.name))
+  const extraReceipts = receipts.filter((r) => !featured.some((f) => f.name === r.name))
+  const rest = wins.filter((w) => !receipts.some((r) => r.name === w.name) && !featured.some((f) => f.name === w.name || w.name.startsWith(f.name)))
   return (
     <section id="proof" aria-label="Proof">
       <Post label="Receipts">
@@ -349,11 +335,14 @@ function ProofBlock({ full }) {
       </Post>
       {featured.map((f) => (
         <Post key={f.name} time={dateFromUrl(f.href)}>
-          <p><Hover name={f.name}><strong>{f.name}</strong></Hover>: {f.body} <span className="badge">{f.badge}</span></p>
-          <a className="media" href={f.href} {...ext} aria-label={`${f.name} ${f.badge}. View the original post on X`}>
-            <Img img={f.img} alt={`${f.name} ${f.badge} announcement`} />
-          </a>
-          <a className="inline-link" href={f.href} {...ext}>View the original post <I.Ext /></a>
+          <p><Hover name={f.name}><strong>{f.name}</strong></Hover>: {f.body}</p>
+          <XEmbed id={postIdFrom(f.href)} href={f.href} badge={f.badge} />
+        </Post>
+      ))}
+      {full && more && extraReceipts.map((r) => (
+        <Post key={r.name} time={dateFromUrl(r.href)}>
+          <p><Hover name={r.name}><strong>{r.name}</strong></Hover>: {r.label}</p>
+          <XEmbed id={postIdFrom(r.href)} href={r.href} badge={r.label} />
         </Post>
       ))}
       {full && more && rest.map((w) => (
@@ -364,7 +353,7 @@ function ProofBlock({ full }) {
       ))}
       {full && (
         <button className="show-more" onClick={() => setMore(!more)} aria-expanded={more}>
-          {more ? 'Show fewer posts' : `Show ${rest.length} more wins`}
+          {more ? 'Show fewer posts' : `Show ${extraReceipts.length + rest.length} more wins`}
         </button>
       )}
     </section>
@@ -460,12 +449,19 @@ function MediaGrid() {
           <span>{v.label}</span>
         </a>
       ))}
-      {receipts.map((r) => (
-        <a key={r.name} href={r.href} {...ext} className="tile">
-          <img src={r.img.src} width={r.img.w} height={r.img.h} alt={`${r.name} ${r.label} screenshot`} loading="lazy" decoding="async" />
-          <span>{r.name} · {r.label}</span>
-        </a>
-      ))}
+      {receipts.map((r) => {
+        const id = postIdFrom(r.href)
+        const thumb = mediaThumb(getPost(id))
+        return (
+          <a key={r.name} href={r.href} {...ext} className={`tile${thumb?.video ? ' tile-video' : ''}${thumb ? '' : ' tile-text'}`}>
+            {thumb
+              ? <img src={thumb.src} width={thumb.w} height={thumb.h} alt={`${r.name} ${r.label}`} loading="lazy" decoding="async" />
+              : <span className="tile-fallback">{r.name}</span>}
+            {thumb?.video && <span className="play" aria-hidden="true"><I.Play size={22} /></span>}
+            <span>{r.name} · {r.label}</span>
+          </a>
+        )
+      })}
     </section>
   )
 }

@@ -27,8 +27,26 @@ function pickVideo() {
 
 function BgVideo({ onPlaying }) {
   const ref = useRef(null)
-  const [src] = useState(pickVideo)
+  const [src, setSrc] = useState(null)
   const [on, setOn] = useState(false)
+  // Wait until after first paint so the 1MB loop does not fight the banner for LCP.
+  useEffect(() => {
+    const picked = pickVideo()
+    if (!picked) return
+    let idle, t
+    const start = () => setSrc(picked)
+    const afterLoad = () => {
+      if (typeof requestIdleCallback === 'function') idle = requestIdleCallback(start, { timeout: 1800 })
+      else t = setTimeout(start, 800)
+    }
+    if (document.readyState === 'complete') afterLoad()
+    else window.addEventListener('load', afterLoad, { once: true })
+    return () => {
+      window.removeEventListener('load', afterLoad)
+      if (idle && typeof cancelIdleCallback === 'function') cancelIdleCallback(idle)
+      clearTimeout(t)
+    }
+  }, [])
   useEffect(() => {
     const v = ref.current
     if (!v) return
@@ -41,7 +59,7 @@ function BgVideo({ onPlaying }) {
     <video
       ref={ref}
       className={`bg-video${on ? ' on' : ''}`}
-      muted autoPlay loop playsInline preload="auto" poster={BG_VIDEO.poster}
+      muted autoPlay loop playsInline preload="metadata" poster={BG_VIDEO.poster}
       onPlaying={() => { setOn(true); onPlaying() }}
       aria-hidden="true" tabIndex={-1}
     >

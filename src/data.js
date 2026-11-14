@@ -2,22 +2,6 @@ import avatar from './assets/img/avatar-x-400.webp'
 import avatarSm from './assets/img/avatar-x-96.webp'
 import banner from './assets/img/banner-x-1200.webp'
 import bannerSm from './assets/img/banner-x-640.webp'
-import launchmynft from './assets/img/launchmynft-640.webp'
-import launchmynft2x from './assets/img/launchmynft-1200.webp'
-import bungee from './assets/img/bungee-640.webp'
-import bungee2x from './assets/img/bungee-1200.webp'
-import perlelabs from './assets/img/perlelabs-640.webp'
-import perlelabs2x from './assets/img/perlelabs-1200.webp'
-import melee from './assets/img/melee-market-640.webp'
-import melee2x from './assets/img/melee-market-1200.webp'
-import yetch from './assets/img/yetch-640.webp'
-import yetch2x from './assets/img/yetch-1200.webp'
-import euclid from './assets/img/euclid-640.webp'
-import euclid2x from './assets/img/euclid-1200.webp'
-import altura from './assets/img/altura-640.webp'
-import altura2x from './assets/img/altura-1200.webp'
-import articleCover from './assets/img/ai-video-article-640.webp'
-import articleCover2x from './assets/img/ai-video-article-1280.webp'
 import thumbShowreel from './assets/img/showreel-thumb.webp'
 import thumbKai from './assets/img/kai-thumb.webp'
 import thumbBanger from './assets/img/banger-thumb.webp'
@@ -30,9 +14,6 @@ import logoHiggsfield from './assets/logos/higgsfield_ai.webp'
 import logoKite from './assets/logos/gokiteai.webp'
 import logoWiener from './assets/logos/wienerlabs.webp'
 import logoAltura from './assets/logos/altura.webp'
-
-// Responsive image: 640w for 1x, larger file for 2x screens. w/h are the 640w size.
-const pic = (src, src2x, w, h, w2 = 1200) => ({ src, srcSet: `${src} 640w, ${src2x} ${w2}w`, w, h })
 
 export const X_URL = 'https://x.com/0xileri'
 export const AVATAR = avatar
@@ -131,9 +112,9 @@ export const steps = [
 ]
 
 export const featured = [
-  { name: 'LaunchMyNFT', badge: '1st place', kicker: 'Creator campaign', body: 'First place in the LaunchMyNFT creator campaign.', img: pic(launchmynft, launchmynft2x, 640, 953), href: post('2049553153738117425') },
-  { name: 'Bungee', badge: '1st place', kicker: 'Community campaign', body: 'Top community submission across the whole Bungee campaign.', img: pic(bungee, bungee2x, 640, 674), href: post('2035001439517335798') },
-  { name: 'PerleLabs', badge: 'Top 5', kicker: '10,000+ submissions', body: 'Ranked top 5 on a leaderboard with more than 10,000 submissions.', img: pic(perlelabs, perlelabs2x, 640, 424), href: post('2037235146655478071') },
+  { name: 'LaunchMyNFT', badge: '1st place', kicker: 'Creator campaign', body: 'First place in the LaunchMyNFT creator campaign.', href: post('2049553153738117425') },
+  { name: 'Bungee', badge: '1st place', kicker: 'Community campaign', body: 'Top community submission across the whole Bungee campaign.', href: post('2035001439517335798') },
+  { name: 'PerleLabs', badge: 'Top 5', kicker: '10,000+ submissions', body: 'Ranked top 5 on a leaderboard with more than 10,000 submissions.', href: post('2037235146655478071') },
 ]
 
 export const builds = [
@@ -183,13 +164,13 @@ export const wins = [
 ]
 
 export const receipts = [
-  { name: 'LaunchMyNFT', label: '1st place', img: pic(launchmynft, launchmynft2x, 640, 953), href: post('2049553153738117425') },
-  { name: 'Bungee', label: '1st place', img: pic(bungee, bungee2x, 640, 674), href: post('2035001439517335798') },
-  { name: 'Melee Market', label: 'Winner', img: pic(melee, melee2x, 640, 661), href: post('2053754076479770751') },
-  { name: 'PerleLabs', label: 'Top 5 leaderboard', img: pic(perlelabs, perlelabs2x, 640, 424), href: post('2037235146655478071') },
-  { name: 'Yetch', label: '2nd place', img: pic(yetch, yetch2x, 640, 839), href: post('2033976307210481759') },
-  { name: 'Euclid', label: 'Winner', img: pic(euclid, euclid2x, 640, 831), href: post('2032896106808414325') },
-  { name: 'Altura', label: 'Winner', img: pic(altura, altura2x, 640, 593), href: post('2025497795415662709') },
+  { name: 'LaunchMyNFT', label: '1st place', href: post('2049553153738117425') },
+  { name: 'Bungee', label: '1st place', href: post('2035001439517335798') },
+  { name: 'Melee Market', label: 'Winner', href: post('2053754076479770751') },
+  { name: 'PerleLabs', label: 'Top 5 leaderboard', href: post('2037235146655478071') },
+  { name: 'Yetch', label: '2nd place', href: post('2033976307210481759') },
+  { name: 'Euclid', label: 'Winner', href: post('2032896106808414325') },
+  { name: 'Altura', label: 'Winner', href: post('2025497795415662709') },
 ]
 
 export const roles = [
@@ -228,8 +209,6 @@ export const article = {
   title: "how i make AI videos (a beginner's breakdown)",
   preview: "I've been getting a lot of DMs since I started posting AI videos, so I figured I'd just write it all out.",
   href: 'https://x.com/0xileri/status/2058611697187782908',
-  cover: pic(articleCover, articleCover2x, 640, 256, 1280),
-  counts: { replies: '245', reposts: '127', likes: '1.3K', views: '127K' },
 }
 
 // ileri's own AI videos, from their X posts. Clips are 12s muted highlights,
@@ -304,5 +283,5 @@ export const BG_VIDEO = {
   webm: '/bg/bg-loop.webm',
   mp4: '/bg/bg-loop.mp4',
   mobile: '/bg/bg-loop-mobile.mp4',
-  poster: '/bg/bg-poster.jpg',
+  poster: '/bg/bg-poster.webp',
 }

@@ -29,7 +29,7 @@ const config = {
     ] },
     { source: 'assets/**', headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }] },
     { source: 'fonts/**', headers: [{ key: 'Cache-Control', value: 'public, max-age=2592000' }] },
-    { source: '{video,bg}/**', headers: [{ key: 'Cache-Control', value: 'public, max-age=604800' }] },
+    { source: '{video,bg,posts}/**', headers: [{ key: 'Cache-Control', value: 'public, max-age=604800' }] },
     { source: 'index.html', headers: [{ key: 'Cache-Control', value: 'no-cache' }] },
   ],
 }
