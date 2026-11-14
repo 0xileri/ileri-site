@@ -305,9 +305,30 @@ ul { list-style: none; }
 .tile .play { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #000000a6; color: #fff; border: 2px solid #fff; padding: 0; font-size: 0; }
 .tile .play svg { margin-left: 3px; }
 
-/* logos */
+/* logos: slow marquee, paused on hover or keyboard focus */
 .logos-title { margin-top: 14px; }
-.logos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+/* overflow-x: clip, not hidden: hidden on one axis forces the other to scroll,
+   which would trap the hover cards. The mask below opens a stacking context, so
+   lift the strip over the receipt posts (z 1) and under .top-bar (z 30). */
+.logos { position: relative; z-index: 5; display: flex; gap: 8px; margin-top: 10px; overflow-x: clip; overflow-y: visible; }
+/* The edge fade is a mask, and a mask clips everything inside the element's own
+   box - which swallowed the hover cards hanging below the strip. mask-clip:
+   no-clip lifts that. Layer 1 is the fade across the strip itself; layer 2 is a
+   solid that starts at the strip's bottom edge and runs 1000px down, so the card
+   below stays fully opaque instead of inheriting the fade. Gated: without
+   no-clip you get a hard edge rather than a disappearing card. */
+@supports (mask-clip: no-clip) {
+  .logos {
+    mask-image: linear-gradient(90deg, transparent, #000 36px, #000 calc(100% - 36px), transparent), linear-gradient(#000, #000);
+    mask-repeat: no-repeat, no-repeat;
+    mask-size: 100% 100%, 100% 1000px;
+    mask-position: 0 0, left 0 bottom -1000px;
+    mask-clip: no-clip;
+  }
+}
+.logo-track { display: flex; gap: 8px; flex: 0 0 auto; padding-right: 8px; animation: logo-scroll 46s linear infinite; will-change: transform; }
+.logos:hover .logo-track, .logos:focus-within .logo-track { animation-play-state: paused; }
+@keyframes logo-scroll { to { transform: translate3d(-100%, 0, 0); } }
 .logo { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px 5px 5px; border: 1px solid var(--border); border-radius: 999px; background: var(--chip-bg); font-size: 13px; font-weight: 700; cursor: default; transition: border-color .2s, background .2s; }
 .logo img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
 .logo-word { padding: 6px 12px; font-family: var(--display); font-weight: 700; letter-spacing: .01em; }
@@ -483,3 +504,59 @@ ul { list-style: none; }
   .post.reveal .post-title { clip-path: none; }
   .card:hover, .x-embed:hover, .logos > *:hover, .pkg:hover, .btn:hover { transform: none; }
 }
+
+
+/* ---------- v4: logo marquee fallback, receipts progress beam ---------- */
+
+/* No motion: drop the duplicate and dissolve the track so the chips become
+   direct children of .logos and wrap exactly as they did before the marquee.
+   (Wrapping the track itself cannot work: it is flex: 0 0 auto, so it refuses
+   to shrink and pushes the page sideways.) */
+@media (prefers-reduced-motion: reduce) {
+  .logos { overflow: visible; flex-wrap: wrap; -webkit-mask-image: none; mask-image: none; }
+  .logo-track { display: contents; }
+  .logo-track[aria-hidden="true"] { display: none; }
+}
+
+/* receipts progress beam */
+.receipts-list { position: relative; }
+/* 36px is the gutter centre (a 40px avatar in a 40px gutter) at every width;
+   margin-left pulls the 2px beam back onto that centre so the dots sit on it. */
+.receipts-beam { position: absolute; left: 36px; margin-left: -1px; top: 14px; bottom: 14px; width: 2px; pointer-events: none; z-index: 0; }
+.receipts-beam-track, .receipts-beam-fill { position: absolute; inset: 0; border-radius: 2px; }
+.receipts-beam-track { background: var(--border); opacity: .5; }
+.receipts-beam-fill {
+  background: linear-gradient(180deg, var(--accent), var(--amber));
+  transform: scaleY(0);
+  transform-origin: top;
+  box-shadow: 0 0 10px -1px var(--accent);
+}
+/* Scroll-driven where supported; the JS in motion.jsx drives it otherwise. */
+.receipts-beam-fill.sda {
+  animation: beam-fill linear both;
+  animation-timeline: view();
+  animation-range: cover 18% cover 72%;
+}
+@keyframes beam-fill { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+/* the dot that lights up as the beam passes each receipt */
+.post-gutter { position: relative; }
+.receipt-dot {
+  /* top: 48px clears the 40px avatar sitting at the top of the gutter -
+     at 14px the dot landed in the middle of the face. */
+  position: absolute; left: 50%; top: 48px; translate: -50% 0;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--bg); border: 2px solid var(--border);
+  z-index: 2;
+  transition: background .45s var(--ease-out), border-color .45s var(--ease-out), box-shadow .45s var(--ease-out), scale .45s var(--ease-out);
+}
+.receipt-dot.on { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px #2bb3e026, 0 0 12px -2px var(--accent); scale: 1.12; }
+
+/* The beam sits under the avatars, and posts must stay above it. */
+.receipts-list .post { position: relative; z-index: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .receipts-beam-fill { transform: scaleY(1); animation: none; }
+  .receipt-dot { transition: none; }
+}
+

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { CountUp, useReveal } from './motion.jsx'
+import { CountUp, useReveal, ReceiptsTrack } from './motion.jsx'
 import {
   X_URL, DM_URL, TG_URL, AVATAR, AVATAR_SM, BANNER, BANNER_SM, stats, services, packages, oneOff, steps,
-  featured, builds, wins, receipts, roles, contacts, profile, whoToFollow, article, videos, projects,
+  featured, builds, wins, receipts, roles, contacts, profile, whoToFollow, article, videos, projects, highlights,
 } from './data.js'
 import * as I from './icons.jsx'
 import Background from './Background.jsx'
@@ -133,13 +133,14 @@ function Actions({ counts }) {
   )
 }
 
-function Post({ children, id, pinned, label, time, thread, threadEnd, compact, counts }) {
+function Post({ children, id, pinned, label, time, thread, threadEnd, compact, counts, dot }) {
   return (
     <article className={`post reveal${thread ? ' in-thread' : ''}${threadEnd ? ' thread-end' : ''}${compact ? ' compact' : ''}`} id={id}>
       {pinned && <p className="post-ctx"><I.Pin /> Pinned</p>}
       {label && !pinned && <p className="post-ctx">{label}</p>}
       <div className="post-row">
         <div className="post-gutter">
+          {dot && <span className="receipt-dot" aria-hidden="true" />}
           <Avatar />
           {thread && !threadEnd && <span className="thread-line" />}
         </div>
@@ -308,18 +309,46 @@ function HowThread() {
   )
 }
 
+function LogoChip({ p, plain }) {
+  const chip = (
+    <span className={`logo${p.logo ? '' : ' logo-word'}`} tabIndex={plain ? -1 : 0} aria-hidden={plain || undefined}>
+      {p.logo && <img src={p.logo} alt="" width="28" height="28" loading="lazy" />}
+      <span>{p.name}</span>
+    </span>
+  )
+  // The duplicate track is decorative: no hover card, nothing focusable.
+  return plain ? chip : <Hover name={p.name}>{chip}</Hover>
+}
+
 function LogoRow() {
   return (
     <div className="logos" aria-label="Projects I've worked with">
-      {projects.map((p) => (
-        <Hover key={p.name} name={p.name}>
-          <span className={`logo${p.logo ? '' : ' logo-word'}`} tabIndex={0}>
-            {p.logo && <img src={p.logo} alt="" width="28" height="28" loading="lazy" />}
-            <span>{p.name}</span>
-          </span>
-        </Hover>
-      ))}
+      <div className="logo-track">
+        {projects.map((p) => <LogoChip key={p.name} p={p} />)}
+      </div>
+      <div className="logo-track" aria-hidden="true">
+        {projects.map((p) => <LogoChip key={`dup-${p.name}`} p={p} plain />)}
+      </div>
     </div>
+  )
+}
+
+function HighlightsBlock() {
+  return (
+    <section id="highlights" aria-label="Highlights">
+      <Post label="Highlights">
+        <p>The posts that travelled furthest. Live numbers from X, not screenshots.</p>
+      </Post>
+      {highlights.map((h) => {
+        const href = `https://x.com/0xileri/status/${h.id}`
+        return (
+          <Post key={h.id} time={dateFromUrl(href)}>
+            <p>{h.note}</p>
+            <XEmbed id={h.id} href={href} />
+          </Post>
+        )
+      })}
+    </section>
   )
 }
 
@@ -334,24 +363,26 @@ function ProofBlock({ full }) {
         <p className="post-title logos-title">Projects I've worked with</p>
         <LogoRow />
       </Post>
-      {featured.map((f) => (
-        <Post key={f.name} time={dateFromUrl(f.href)}>
-          <p><Hover name={f.name}><strong>{f.name}</strong></Hover>: {f.body}</p>
-          <XEmbed id={postIdFrom(f.href)} href={f.href} badge={f.badge} />
-        </Post>
-      ))}
-      {full && more && extraReceipts.map((r) => (
-        <Post key={r.name} time={dateFromUrl(r.href)}>
-          <p><Hover name={r.name}><strong>{r.name}</strong></Hover>: {r.label}</p>
-          <XEmbed id={postIdFrom(r.href)} href={r.href} badge={r.label} />
-        </Post>
-      ))}
-      {full && more && rest.map((w) => (
-        <Post key={w.name} compact time={dateFromUrl(w.href)}>
-          <p><Hover name={w.name}><strong>{w.name}</strong></Hover>: {w.result} <span className="badge badge-dim">{w.type}</span></p>
-          <a className="inline-link" href={w.href} {...ext}>View the original post <I.Ext /></a>
-        </Post>
-      ))}
+      <ReceiptsTrack>
+        {featured.map((f) => (
+          <Post key={f.name} time={dateFromUrl(f.href)} dot>
+            <p><Hover name={f.name}><strong>{f.name}</strong></Hover>: {f.body}</p>
+            <XEmbed id={postIdFrom(f.href)} href={f.href} badge={f.badge} />
+          </Post>
+        ))}
+        {full && more && extraReceipts.map((r) => (
+          <Post key={r.name} time={dateFromUrl(r.href)} dot>
+            <p><Hover name={r.name}><strong>{r.name}</strong></Hover>: {r.label}</p>
+            <XEmbed id={postIdFrom(r.href)} href={r.href} badge={r.label} />
+          </Post>
+        ))}
+        {full && more && rest.map((w) => (
+          <Post key={w.name} compact time={dateFromUrl(w.href)} dot>
+            <p><Hover name={w.name}><strong>{w.name}</strong></Hover>: {w.result} <span className="badge badge-dim">{w.type}</span></p>
+            <a className="inline-link" href={w.href} {...ext}>View the original post <I.Ext /></a>
+          </Post>
+        ))}
+      </ReceiptsTrack>
       {full && (
         <button className="show-more" onClick={() => setMore(!more)} aria-expanded={more}>
           {more ? 'Show fewer posts' : `Show ${extraReceipts.length + rest.length} more wins`}
@@ -671,6 +702,7 @@ export default function App() {
           {tab === 'posts' && <>
             <Pinned go={go} />
             <VideoPost v={lead} />
+            <HighlightsBlock />
             <ProofBlock />
             <PackagesBlock />
             {expanded ? <>

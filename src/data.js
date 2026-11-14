@@ -117,6 +117,14 @@ export const featured = [
   { name: 'PerleLabs', badge: 'Top 5', kicker: '10,000+ submissions', body: 'Ranked top 5 on a leaderboard with more than 10,000 submissions.', href: post('2037235146655478071') },
 ]
 
+// Best-performing posts by reach. IDs only: the live counts come from
+// posts.json via XEmbed, so these never go stale here.
+export const highlights = [
+  { id: '2058611697187782908', note: 'My AI video breakdown. Biggest post to date.' },
+  { id: '2033976307210481759', note: 'Yetch terminal walkthrough.' },
+  { id: '2049553153738117425', note: 'The LaunchMyNFT campaign write-up that took 1st.' },
+]
+
 export const builds = [
   {
     name: 'LEAPSY',
@@ -153,7 +161,7 @@ export const wins = [
   { name: 'LaunchMyNFT', result: '1st place', type: 'Win', href: post('2049553153738117425') },
   { name: 'Bungee', result: '1st place', type: 'Win', href: post('2035001439517335798') },
   { name: 'PerleLabs', result: 'Top 5 of 10,000+', type: 'Placement', href: post('2037235146655478071') },
-  { name: 'Melee Market', result: 'Winner', type: 'Win', href: post('2053754076479770751') },
+  { name: 'Melee Market', result: '2nd place', type: 'Placement', href: post('2053754076479770751') },
   { name: 'Dzap', result: 'Winner', type: 'Win', href: post('2041162404545843711') },
   { name: 'Altura', result: 'Winner', type: 'Win', href: post('2025497795415662709') },
   { name: 'Euclid', result: 'Winner', type: 'Win', href: post('2032896106808414325') },
@@ -166,7 +174,7 @@ export const wins = [
 export const receipts = [
   { name: 'LaunchMyNFT', label: '1st place', href: post('2049553153738117425') },
   { name: 'Bungee', label: '1st place', href: post('2035001439517335798') },
-  { name: 'Melee Market', label: 'Winner', href: post('2053754076479770751') },
+  { name: 'Melee Market', label: '2nd place', href: post('2053754076479770751') },
   { name: 'PerleLabs', label: 'Top 5 leaderboard', href: post('2037235146655478071') },
   { name: 'Yetch', label: '2nd place', href: post('2033976307210481759') },
   { name: 'Euclid', label: 'Winner', href: post('2032896106808414325') },
