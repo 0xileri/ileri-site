@@ -59,7 +59,6 @@ export const services = [
 export const packages = [
   {
     name: 'Starter',
-    price: '$1,000',
     items: [
       '4 posts on my page',
       '4 quote posts',
@@ -69,7 +68,6 @@ export const packages = [
   },
   {
     name: 'Growth',
-    price: '$2,500',
     featured: true,
     items: [
       '8 posts + 8 quotes',
@@ -80,7 +78,6 @@ export const packages = [
   },
   {
     name: 'Launch',
-    price: '$5,000',
     items: [
       'Everything in Growth',
       'Bigger KOL campaign with 10-15 creators',
@@ -91,10 +88,10 @@ export const packages = [
 ]
 
 export const oneOff = [
-  { item: 'Post on my page', price: '$150-200' },
-  { item: 'Quote post', price: '$100' },
-  { item: '1-minute AI video', price: '$300-500' },
-  { item: 'KOL campaign', price: 'Priced by size' },
+  { item: 'Post on my page' },
+  { item: 'Quote post' },
+  { item: '1-minute AI video' },
+  { item: 'KOL campaign' },
 ]
 
 export const steps = [

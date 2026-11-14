@@ -154,7 +154,7 @@ function Poll() {
       {packages.map((p) => (
         <button key={p.name} className={`poll-opt${pick === p.name ? ' picked' : ''}${pick && pick !== p.name ? ' faded' : ''}`} onClick={() => setPick(p.name)}>
           <span className="poll-fill" style={{ width: pick === p.name ? '100%' : '0%' }} />
-          <span className="poll-label">{p.name} · {p.price}/month</span>
+          <span className="poll-label">{p.name}</span>
           {pick === p.name && <I.Check />}
         </button>
       ))}
@@ -171,7 +171,7 @@ function PackagesBlock() {
   return (
     <section id="packages" aria-label="Packages">
       <Post label="Packages">
-        <p>Monthly packages, prices in USD. Which one fits your project?</p>
+        <p>Monthly packages. DM me for pricing. Which one fits your project?</p>
         <Poll />
       </Post>
       {packages.map((p) => (
@@ -179,7 +179,7 @@ function PackagesBlock() {
           <div className={`card plan${p.featured ? ' plan-featured' : ''}`}>
             <div className="plan-top">
               <span className="plan-name">{p.name}</span>
-              <span className="plan-price"><strong>{p.price}</strong>/month</span>
+              <span className="plan-price">Monthly · DM for pricing</span>
             </div>
             <ul className="checks">{p.items.map((it) => <li key={it}><I.Check /> {it}</li>)}</ul>
             <a className={`btn ${p.featured ? 'btn-accent' : 'btn-outline'} btn-block`} href={X_URL} {...ext}>Ask about {p.name}</a>
@@ -189,7 +189,7 @@ function PackagesBlock() {
       <Post>
         <p>Just need a single post or a video? That works too.</p>
         <div className="card table">
-          {oneOff.map((o) => <div key={o.item}><span>{o.item}</span><strong>{o.price}</strong></div>)}
+          {oneOff.map((o) => <div key={o.item}><span>{o.item}</span><strong>DM for a quote</strong></div>)}
         </div>
         <p className="note">Very early team? I'm open to part cash, part tokens.</p>
       </Post>
