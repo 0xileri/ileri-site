@@ -4,6 +4,6 @@
     "node": "22"
   },
   "deploy": {
-    "startCommand": "npx serve -s dist -l tcp://0.0.0.0:${PORT:-3000}"
+    "startCommand": "node server.mjs"
   }
 }
