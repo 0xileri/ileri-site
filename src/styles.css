@@ -365,7 +365,7 @@ ul { list-style: none; }
 .display-opt.on .display-dot { border: 4px solid var(--accent); }
 
 /* background video */
-.bg-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: saturate(1.15) contrast(1.05); }
+.bg-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .bg-shade { position: absolute; inset: 0; background: linear-gradient(180deg, #00000059, #00000080); opacity: 0; transition: opacity 1s; }
 .bg-has-video .bg-shade { opacity: 1; }
 .bg-has-video .bg-canvas { opacity: 0; transition: opacity 1.2s; }
@@ -475,8 +475,8 @@ ul { list-style: none; }
 .bg-video-playing .bg-video:not(.bg-poster) { opacity: 1; }
 .bg-has-video .bg-shade, .bg-has-video .bg-vignette, .bg-has-video .bg-grain { z-index: 2; }
 /* Light theme: lighter wash so the seaport still shows through */
-[data-theme="light"] .bg-shade { background: linear-gradient(180deg, #ffffff2e, #ffffff66); }
-[data-theme="light"] .bg-vignette { background: radial-gradient(ellipse at center, transparent 45%, #ffffff80 100%); }
+[data-theme="light"] .bg-has-video .bg-shade { opacity: 0; }
+[data-theme="light"] .bg-has-video .bg-vignette, [data-theme="light"] .bg-has-video .bg-grain { opacity: 0; }
 
 @media (prefers-reduced-motion: reduce) {
   .post.reveal { opacity: 1; transform: none; }
