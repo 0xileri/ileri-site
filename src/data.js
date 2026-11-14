@@ -300,7 +300,7 @@ export const caseStudy = null
 
 // Background video. Set enabled: true once the files are in public/bg/.
 export const BG_VIDEO = {
-  enabled: false,
+  enabled: true,
   webm: '/bg/bg-loop.webm',
   mp4: '/bg/bg-loop.mp4',
   mobile: '/bg/bg-loop-mobile.mp4',
