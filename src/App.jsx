@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   X_URL, AVATAR, AI_VIDEO_URL, stats, ecosystems, services, packages, oneOff, steps,
-  featured, builds, wins, receipts, roles, contacts, profile, whoToFollow,
+  featured, builds, wins, receipts, roles, contacts, profile, whoToFollow, article,
 } from './data.js'
 import * as I from './icons.jsx'
 
@@ -36,7 +36,7 @@ function Avatar({ size = 40, src = AVATAR, letter }) {
   return <img className="avatar" src={src} alt="" width={size} height={size} style={{ width: size, height: size }} />
 }
 
-function Actions() {
+function Actions({ counts }) {
   const [liked, setLiked] = useState(false)
   const [reposted, setReposted] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -48,14 +48,14 @@ function Actions() {
   }
   return (
     <div className="actions">
-      <a className="act act-reply" href={X_URL} {...ext} aria-label="Reply with a DM"><I.Reply size={18} /></a>
+      <a className="act act-reply" href={X_URL} {...ext} aria-label="Reply with a DM"><I.Reply size={18} />{counts && <span>{counts.replies}</span>}</a>
       <button className={`act act-repost${reposted ? ' on' : ''}`} onClick={() => setReposted(!reposted)} aria-pressed={reposted} aria-label="Repost">
-        <I.Repost size={18} />{reposted && <span className="act-note">nice</span>}
+        <I.Repost size={18} />{counts && <span>{counts.reposts}</span>}{reposted && <span className="act-note">nice</span>}
       </button>
       <button className={`act act-like${liked ? ' on' : ''}`} onClick={() => setLiked(!liked)} aria-pressed={liked} aria-label="Like">
-        <span className="heart"><I.Heart size={18} filled={liked} /></span>{liked && <span className="act-note">ty ❤️</span>}
+        <span className="heart"><I.Heart size={18} filled={liked} /></span>{counts && <span>{counts.likes}</span>}{liked && <span className="act-note">ty ❤️</span>}
       </button>
-      <span className="act act-views" aria-hidden="true"><I.Views size={18} /></span>
+      <span className="act act-views" aria-hidden={!counts}><I.Views size={18} />{counts && <span>{counts.views}</span>}</span>
       <button className="act act-share" onClick={share} aria-label="Copy site link">
         <I.Share size={18} />{copied && <span className="act-note">copied</span>}
       </button>
@@ -63,7 +63,7 @@ function Actions() {
   )
 }
 
-function Post({ children, id, pinned, label, time, thread, threadEnd, compact }) {
+function Post({ children, id, pinned, label, time, thread, threadEnd, compact, counts }) {
   return (
     <article className={`post${thread ? ' in-thread' : ''}${threadEnd ? ' thread-end' : ''}${compact ? ' compact' : ''}`} id={id}>
       {pinned && <p className="post-ctx"><I.Pin /> Pinned</p>}
@@ -80,7 +80,7 @@ function Post({ children, id, pinned, label, time, thread, threadEnd, compact })
             {time && <><span className="dim">·</span><span className="dim">{time}</span></>}
           </header>
           <div className="post-body">{children}</div>
-          <Actions />
+          <Actions counts={counts} />
         </div>
       </div>
     </article>
@@ -100,6 +100,29 @@ function Pinned({ go }) {
         <a className="btn btn-accent" href={X_URL} {...ext}>DM me</a>
         <button className="btn btn-outline" onClick={() => go('packages', 'packages')}>See packages</button>
       </div>
+    </Post>
+  )
+}
+
+function ArticleCard() {
+  return (
+    <a className="card article" href={article.href} {...ext}>
+      <img src={article.cover} alt="Cover image for the article" loading="lazy" />
+      <div className="article-body">
+        <span className="article-tag"><I.Steps size={14} /> Article</span>
+        <h3>{article.title}</h3>
+        <p className="dim">{article.preview}</p>
+        <span className="inline-link">Read the article <I.Ext /></span>
+      </div>
+    </a>
+  )
+}
+
+function ArticlePost({ pinned = true }) {
+  return (
+    <Post id="ai-video" pinned={pinned} label={pinned ? undefined : 'Article'} time={dateFromUrl(article.href)} counts={article.counts}>
+      <p>wrote down exactly how I make my AI videos, start to finish. if you're new to it, start here 👇</p>
+      <ArticleCard />
     </Post>
   )
 }
@@ -407,6 +430,7 @@ export default function App() {
         <div className="feed">
           {tab === 'posts' && <>
             <Pinned go={go} />
+            <ArticlePost />
             <ServicesThread />
             <PackagesBlock />
             <HowThread />
@@ -416,7 +440,7 @@ export default function App() {
           </>}
           {tab === 'packages' && <><PackagesBlock /><ContactBlock /></>}
           {tab === 'proof' && <><ProofBlock /><ShippedBlock /></>}
-          {tab === 'media' && <MediaGrid />}
+          {tab === 'media' && <><ArticlePost pinned={false} /><MediaGrid /></>}
         </div>
       </main>
 

@@ -194,3 +194,13 @@ export const whoToFollow = [
   { name: 'ileri on GitHub', handle: 'github.com/0xileri', href: 'https://github.com/0xileri', letter: 'G', cta: 'View' },
   { name: 'ileri on YouTube', handle: 'youtube.com/@0xileri', href: 'https://youtube.com/@0xileri', letter: 'Y', cta: 'View' },
 ]
+
+// Real X article, stats from fxtwitter on Nov 14, 2026.
+import articleCover from './assets/ai-video-article.jpg'
+export const article = {
+  title: "how i make AI videos (a beginner's breakdown)",
+  preview: "I've been getting a lot of DMs since I started posting AI videos, so I figured I'd just write it all out.",
+  href: 'https://x.com/0xileri/status/2058611697187782908',
+  cover: articleCover,
+  counts: { replies: '245', reposts: '127', likes: '1.3K', views: '127K' },
+}

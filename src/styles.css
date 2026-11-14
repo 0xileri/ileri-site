@@ -227,3 +227,13 @@ ul { list-style: none; }
   .media-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } html { scroll-behavior: auto; } }
+
+/* article card */
+.article { display: block; transition: border-color .2s, background .2s; }
+.article:hover { border-color: #536471; background: #ffffff06; }
+.article img { width: 100%; aspect-ratio: 2.5 / 1; object-fit: cover; border-bottom: 1px solid var(--border); transition: transform .4s var(--ease); }
+.article:hover img { transform: scale(1.015); }
+.article-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; }
+.article-tag { display: inline-flex; align-items: center; gap: 5px; align-self: flex-start; font-size: 12px; font-weight: 700; color: var(--amber); background: #f5b73420; padding: 3px 9px; border-radius: 999px; }
+.article h3 { font-size: 19px; font-weight: 800; line-height: 1.25; }
+.article .inline-link { margin-top: 4px; }
