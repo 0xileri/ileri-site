@@ -168,7 +168,7 @@ export const receipts = [
 export const roles = [
   { name: 'Higgsfield', role: 'Creator' },
   { name: 'Triad', role: 'Contributor' },
-  { name: 'WienerLabs', role: 'Affiliate partner' },
+  { name: 'Kite AI', role: 'Affiliate' },
 ]
 
 export const contacts = [
