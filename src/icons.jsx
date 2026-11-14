@@ -23,3 +23,9 @@ export const Search = (p) => <P {...p} size={18} d={['M11 18a7 7 0 1 0 0-14 7 7 
 export const Quill = (p) => <P {...p} d={['M20 4c-6 0-11 4-13 11l-2 5', 'M7 15c4 0 8-2 10-6']} />
 export const Ext = (p) => <P {...p} size={14} d={['M7 17 17 7', 'M8 7h9v9']} />
 export const Check = (p) => <P {...p} size={16} d="m5 12 4 4 10-10" />
+export const Send = (p) => <P {...p} d={['M21 3 10 14', 'm21 3-7 18-4-7-7-4 18-7Z']} />
+export const Theme = (p) => <P {...p} d={['M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9Z']} />
+export const Play = (p) => <P {...p} fill="currentColor" d="M8 5v14l11-7L8 5Z" />
+export const Muted = (p) => <P {...p} size={16} d={['M11 5 6 9H3v6h3l5 4V5Z', 'm22 9-6 6', 'm16 9 6 6']} />
+export const Video = (p) => <P {...p} d={['M3 6h12v12H3z', 'm15 10 6-3v10l-6-3']} />
+export const More = (p) => <P {...p} d={['M5 12h.01', 'M12 12h.01', 'M19 12h.01']} />

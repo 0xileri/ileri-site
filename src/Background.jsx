@@ -1,4 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { BG_VIDEO } from './data.js'
+import { prefersReducedMotion, saveData } from './hooks.js'
 
 // Color scenes. Every few seconds the blobs crossfade to the next scene.
 const SCENES = [
@@ -14,8 +16,45 @@ const hex = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), pa
 const RGB = SCENES.map((s) => s.map(hex))
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
 
+// Pick the background video source, or null to keep the canvas motion background.
+// Desktop on a good connection gets the full encode; phones get the small one.
+function pickVideo() {
+  if (!BG_VIDEO.enabled || prefersReducedMotion() || saveData()) return null
+  const small = window.matchMedia('(max-width: 700px)').matches
+  if (small) return BG_VIDEO.mobile ? { mp4: BG_VIDEO.mobile } : null
+  return { webm: BG_VIDEO.webm, mp4: BG_VIDEO.mp4 }
+}
+
+function BgVideo({ onPlaying }) {
+  const ref = useRef(null)
+  const [src] = useState(pickVideo)
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    const v = ref.current
+    if (!v) return
+    const onVis = () => { if (document.hidden) v.pause(); else v.play().catch(() => {}) }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [src])
+  if (!src) return null
+  return (
+    <video
+      ref={ref}
+      className={`bg-video${on ? ' on' : ''}`}
+      muted autoPlay loop playsInline preload="auto" poster={BG_VIDEO.poster}
+      onPlaying={() => { setOn(true); onPlaying() }}
+      aria-hidden="true" tabIndex={-1}
+    >
+      {src.webm && <source src={src.webm} type="video/webm" />}
+      {src.mp4 && <source src={src.mp4} type="video/mp4" />}
+    </video>
+  )
+}
+
 export default function Background() {
   const ref = useRef(null)
+  const stopRef = useRef(() => {})
+  const [videoOn, setVideoOn] = useState(false)
 
   useEffect(() => {
     const canvas = ref.current
@@ -84,6 +123,7 @@ export default function Background() {
       else if (!running && !reduce) { running = true; raf = requestAnimationFrame(loop) }
     }
 
+    stopRef.current = () => { running = false; cancelAnimationFrame(raf); document.removeEventListener('visibilitychange', onVis) }
     resize()
     if (reduce) draw(start)
     else raf = requestAnimationFrame(loop)
@@ -98,8 +138,10 @@ export default function Background() {
   }, [])
 
   return (
-    <div className="bg" aria-hidden="true">
+    <div className={`bg${videoOn ? ' bg-has-video' : ''}`} aria-hidden="true">
       <canvas ref={ref} className="bg-canvas" />
+      <BgVideo onPlaying={() => { if (!videoOn) { setVideoOn(true); setTimeout(() => stopRef.current(), 1200) } }} />
+      <div className="bg-shade" />
       <div className="bg-vignette" />
       <div className="bg-grain" />
     </div>

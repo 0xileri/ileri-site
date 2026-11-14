@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
-  X_URL, AVATAR, BANNER, AI_VIDEO_URL, stats, ecosystems, services, packages, oneOff, steps,
-  featured, builds, wins, receipts, roles, contacts, profile, whoToFollow, article,
+  X_URL, DM_URL, TG_URL, AVATAR, AVATAR_SM, BANNER, BANNER_SM, stats, services, packages, oneOff, steps,
+  featured, builds, wins, receipts, roles, contacts, profile, whoToFollow, article, videos, projects,
 } from './data.js'
 import * as I from './icons.jsx'
 import Background from './Background.jsx'
+import { useTheme, THEME_LABELS, prefersReducedMotion, saveData } from './hooks.js'
 
 const ext = { target: '_blank', rel: 'noopener noreferrer' }
 
@@ -24,7 +25,8 @@ const NAV = [
   { id: 'how', label: 'How it works', Icon: I.Steps },
   { id: 'contact', label: 'Contact', Icon: I.Mail },
 ]
-const MOBILE_NAV = NAV.filter((n) => n.id !== 'how')
+// Sections that live behind "Show more" on the Posts tab.
+const HIDDEN = ['services', 'how', 'shipped', 'more-videos']
 const TABS = [
   { id: 'posts', label: 'Posts' },
   { id: 'packages', label: 'Packages' },
@@ -32,9 +34,73 @@ const TABS = [
   { id: 'media', label: 'Media' },
 ]
 
-function Avatar({ size = 40, src = AVATAR, letter }) {
+// Render @handles in real post text as links.
+function Linkify({ text }) {
+  return text.split('\n\n').map((para, i) => (
+    <p key={i}>
+      {para.split(/(@\w+)/g).map((part, j) => (part.startsWith('@')
+        ? <a key={j} className="mention" href={`https://x.com/${part.slice(1)}`} {...ext}>{part}</a>
+        : part))}
+    </p>
+  ))
+}
+
+function Avatar({ size = 40, src = AVATAR_SM, letter }) {
   if (letter) return <span className="avatar avatar-letter" style={{ width: size, height: size, fontSize: size * 0.42 }}>{letter}</span>
-  return <img className="avatar" src={src} alt="" width={size} height={size} style={{ width: size, height: size }} />
+  return <img className="avatar" src={src} alt="" width={size} height={size} style={{ width: size, height: size }} loading="lazy" decoding="async" />
+}
+
+function Img({ img, alt, className, sizes = '(max-width: 700px) 92vw, 520px' }) {
+  return <img className={className} src={img.src} srcSet={img.srcSet} sizes={sizes} width={img.w} height={img.h} alt={alt} loading="lazy" decoding="async" />
+}
+
+/* Hover cards (desktop only, CSS gated on hover-capable pointers) */
+function projectInfo(name) {
+  const p = projects.find((x) => x.name === name || name.startsWith(x.name))
+  const results = wins.filter((w) => w.name === name || w.name.startsWith(name) || (p && w.name.startsWith(p.name)))
+  const role = roles.find((r) => r.name === name)
+  return { name: p ? p.name : name, handle: p && p.handle, logo: p && p.logo, results, role }
+}
+
+function Hover({ name, children }) {
+  const info = projectInfo(name)
+  const href = info.handle ? `https://x.com/${info.handle}` : (info.results[0] && info.results[0].href)
+  return (
+    <span className="hov">
+      {children}
+      <span className="hc" role="tooltip">
+        <span className="hc-top">
+          {info.logo ? <img className="avatar" src={info.logo} alt="" width="48" height="48" loading="lazy" /> : <Avatar size={48} letter={info.name[0]} />}
+          {href && <a className="btn btn-light btn-sm" href={href} {...ext}>{info.handle ? 'View on X' : 'View post'}</a>}
+        </span>
+        <strong>{info.name}</strong>
+        {info.handle && <span className="dim">@{info.handle}</span>}
+        <span className="hc-lines">
+          {info.role && <span>Current role: {info.role.role}</span>}
+          {info.results.map((r) => <span key={r.name + r.result}>{r.result} <span className="dim">· {dateFromUrl(r.href)}</span></span>)}
+          {!info.role && !info.results.length && <span className="dim">Worked with ileri</span>}
+        </span>
+      </span>
+    </span>
+  )
+}
+
+function ProfileHover({ children }) {
+  return (
+    <span className="hov">
+      {children}
+      <span className="hc" role="tooltip">
+        <span className="hc-top">
+          <img className="avatar" src={AVATAR_SM} alt="" width="56" height="56" loading="lazy" />
+          <a className="btn btn-accent btn-sm" href={DM_URL} {...ext}>DM me</a>
+        </span>
+        <strong>{profile.name}</strong>
+        <span className="dim">{profile.handle}</span>
+        <span className="hc-bio">{profile.bio}</span>
+        <span className="hc-follow"><span><strong>{profile.following}</strong> <span className="dim">Following</span></span><span><strong>{profile.followers}</strong> <span className="dim">Followers</span></span></span>
+      </span>
+    </span>
+  )
 }
 
 function Actions({ counts }) {
@@ -47,16 +113,20 @@ function Actions({ counts }) {
       setTimeout(() => setCopied(false), 1400)
     }).catch(() => {})
   }
+  const c = counts || {}
+  const lbl = (n, word, rest) => (n ? `${n} ${word}. ${rest}` : rest)
   return (
     <div className="actions">
-      <a className="act act-reply" href={X_URL} {...ext} aria-label="Reply with a DM"><I.Reply size={18} />{counts && <span>{counts.replies}</span>}</a>
-      <button className={`act act-repost${reposted ? ' on' : ''}`} onClick={() => setReposted(!reposted)} aria-pressed={reposted} aria-label="Repost">
-        <I.Repost size={18} />{counts && <span>{counts.reposts}</span>}{reposted && <span className="act-note">nice</span>}
+      <a className="act act-reply" href={DM_URL} {...ext} aria-label={lbl(c.replies, 'replies', 'Reply with a DM')}><I.Reply size={18} />{counts && <span aria-hidden="true">{c.replies}</span>}</a>
+      <button className={`act act-repost${reposted ? ' on' : ''}`} onClick={() => setReposted(!reposted)} aria-pressed={reposted} aria-label={lbl(c.reposts, 'reposts', 'Repost')}>
+        <I.Repost size={18} />{counts && <span aria-hidden="true">{c.reposts}</span>}{reposted && <span className="act-note">nice</span>}
       </button>
-      <button className={`act act-like${liked ? ' on' : ''}`} onClick={() => setLiked(!liked)} aria-pressed={liked} aria-label="Like">
-        <span className="heart"><I.Heart size={18} filled={liked} /></span>{counts && <span>{counts.likes}</span>}{liked && <span className="act-note">ty ❤️</span>}
+      <button className={`act act-like${liked ? ' on' : ''}`} onClick={() => setLiked(!liked)} aria-pressed={liked} aria-label={lbl(c.likes, 'likes', 'Like')}>
+        <span className="heart"><I.Heart size={18} filled={liked} /></span>{counts && <span aria-hidden="true">{c.likes}</span>}{liked && <span className="act-note">ty ❤️</span>}
       </button>
-      <span className="act act-views" aria-hidden={!counts}><I.Views size={18} />{counts && <span>{counts.views}</span>}</span>
+      {counts
+        ? <span className="act act-views" role="img" aria-label={`${c.views} views`}><I.Views size={18} /><span aria-hidden="true">{c.views}</span></span>
+        : <span className="act act-views" aria-hidden="true"><I.Views size={18} /></span>}
       <button className="act act-share" onClick={share} aria-label="Copy site link">
         <I.Share size={18} />{copied && <span className="act-note">copied</span>}
       </button>
@@ -76,7 +146,7 @@ function Post({ children, id, pinned, label, time, thread, threadEnd, compact, c
         </div>
         <div className="post-main">
           <header className="post-head">
-            <strong>{profile.name}</strong>
+            <ProfileHover><strong>{profile.name}</strong></ProfileHover>
             <span className="dim">{profile.handle}</span>
             {time && <><span className="dim">·</span><span className="dim">{time}</span></>}
           </header>
@@ -98,9 +168,48 @@ function Pinned({ go }) {
         {stats.map((s) => <div key={s.label}><strong>{s.value}</strong><span>{s.label}</span></div>)}
       </div>
       <div className="btn-row">
-        <a className="btn btn-accent" href={X_URL} {...ext}>DM me</a>
+        <a className="btn btn-accent" href={DM_URL} {...ext}>DM me</a>
+        <a className="btn btn-outline" href={TG_URL} {...ext}><I.Send size={16} /> Telegram</a>
         <button className="btn btn-outline" onClick={() => go('packages', 'packages')}>See packages</button>
       </div>
+    </Post>
+  )
+}
+
+/* Autoplay video: muted, looped, plays only while on screen. Reduced motion or data saver shows the poster. */
+function AutoVideo({ v }) {
+  const ref = useRef(null)
+  const [still] = useState(() => prefersReducedMotion() || saveData())
+  const [src, setSrc] = useState(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || still || !('IntersectionObserver' in window)) return
+    const near = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setSrc(v.src); near.disconnect() } }, { rootMargin: '300px' })
+    const vis = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && !document.hidden) el.play?.().catch(() => {})
+      else el.pause?.()
+    }, { threshold: 0.4 })
+    const onHide = () => { if (document.hidden) el.pause() }
+    near.observe(el); vis.observe(el)
+    document.addEventListener('visibilitychange', onHide)
+    return () => { near.disconnect(); vis.disconnect(); document.removeEventListener('visibilitychange', onHide) }
+  }, [still, v.src])
+  return (
+    <a className="media video-media" href={v.href} {...ext} aria-label={`${v.label} by ileri. Watch the full video on X`} style={{ aspectRatio: `${v.w} / ${v.h}` }}>
+      {still
+        ? <img src={v.poster} alt="" width={v.w} height={v.h} loading="lazy" decoding="async" />
+        : <video ref={ref} src={src || undefined} poster={v.poster} muted loop playsInline preload="none" width={v.w} height={v.h} aria-hidden="true" />}
+      <span className="vid-chip"><I.Muted /> 0:12 clip</span>
+      <span className="vid-cta"><I.Play size={14} /> Watch full video on X</span>
+    </a>
+  )
+}
+
+function VideoPost({ v, pinnedLabel }) {
+  return (
+    <Post id={`video-${v.id}`} label={pinnedLabel || 'AI video'} time={dateFromUrl(v.href)} counts={v.counts}>
+      <Linkify text={v.text} />
+      <AutoVideo v={v} />
     </Post>
   )
 }
@@ -108,10 +217,10 @@ function Pinned({ go }) {
 function ArticleCard() {
   return (
     <a className="card article" href={article.href} {...ext}>
-      <img src={article.cover} alt="Cover image for the article" loading="lazy" />
+      <Img img={article.cover} alt="Cover image for the article" />
       <div className="article-body">
         <span className="article-tag"><I.Steps size={14} /> Article</span>
-        <h3>{article.title}</h3>
+        <h2>{article.title}</h2>
         <p className="dim">{article.preview}</p>
         <span className="inline-link">Read the article <I.Ext /></span>
       </div>
@@ -119,9 +228,9 @@ function ArticleCard() {
   )
 }
 
-function ArticlePost({ pinned = true }) {
+function ArticlePost() {
   return (
-    <Post id="ai-video" pinned={pinned} label={pinned ? undefined : 'Article'} time={dateFromUrl(article.href)} counts={article.counts}>
+    <Post id="ai-video" label="Article" time={dateFromUrl(article.href)} counts={article.counts}>
       <p>wrote down exactly how I make my AI videos, start to finish. if you're new to it, start here 👇</p>
       <ArticleCard />
     </Post>
@@ -152,15 +261,15 @@ function Poll() {
   return (
     <div className="poll">
       {packages.map((p) => (
-        <button key={p.name} className={`poll-opt${pick === p.name ? ' picked' : ''}${pick && pick !== p.name ? ' faded' : ''}`} onClick={() => setPick(p.name)}>
+        <button key={p.name} className={`poll-opt${pick === p.name ? ' picked' : ''}${pick && pick !== p.name ? ' faded' : ''}`} onClick={() => setPick(p.name)} aria-pressed={pick === p.name}>
           <span className="poll-fill" style={{ width: pick === p.name ? '100%' : '0%' }} />
           <span className="poll-label">{p.name}</span>
           {pick === p.name && <I.Check />}
         </button>
       ))}
-      <p className="dim poll-foot">
+      <p className="dim poll-foot" aria-live="polite">
         {chosen
-          ? <>Good pick. <a href={X_URL} {...ext}>DM me about {chosen.name}</a> and we'll get going.</>
+          ? <>Good pick. <a href={DM_URL} {...ext}>DM me about {chosen.name}</a> and we'll get going.</>
           : 'Tap one. No one sees your vote, it just helps you decide.'}
       </p>
     </div>
@@ -182,7 +291,7 @@ function PackagesBlock() {
               <span className="plan-price">Monthly · DM for pricing</span>
             </div>
             <ul className="checks">{p.items.map((it) => <li key={it}><I.Check /> {it}</li>)}</ul>
-            <a className={`btn ${p.featured ? 'btn-accent' : 'btn-outline'} btn-block`} href={X_URL} {...ext}>Ask about {p.name}</a>
+            <a className={`btn ${p.featured ? 'btn-accent' : 'btn-outline'} btn-block`} href={DM_URL} {...ext}>Ask about {p.name}</a>
           </div>
         </Post>
       ))}
@@ -213,32 +322,51 @@ function HowThread() {
   )
 }
 
-function ProofBlock() {
+function LogoRow() {
+  return (
+    <div className="logos" aria-label="Projects I've worked with">
+      {projects.map((p) => (
+        <Hover key={p.name} name={p.name}>
+          <span className={`logo${p.logo ? '' : ' logo-word'}`} tabIndex={0}>
+            {p.logo && <img src={p.logo} alt="" width="28" height="28" loading="lazy" />}
+            <span>{p.name}</span>
+          </span>
+        </Hover>
+      ))}
+    </div>
+  )
+}
+
+function ProofBlock({ full }) {
   const [more, setMore] = useState(false)
   const rest = wins.filter((w) => !featured.some((f) => w.name === f.name))
   return (
     <section id="proof" aria-label="Proof">
       <Post label="Receipts">
         <p>The receipts. Wins from open campaigns and hackathons, judged against everyone else who entered. Each one links to the public post.</p>
+        <p className="post-title logos-title">Projects I've worked with</p>
+        <LogoRow />
       </Post>
       {featured.map((f) => (
         <Post key={f.name} time={dateFromUrl(f.href)}>
-          <p>{f.body} <span className="badge">{f.badge}</span></p>
-          <a className="media" href={f.href} {...ext}>
-            <img src={f.img} alt={`${f.name} ${f.badge} announcement`} loading="lazy" />
+          <p><Hover name={f.name}><strong>{f.name}</strong></Hover>: {f.body} <span className="badge">{f.badge}</span></p>
+          <a className="media" href={f.href} {...ext} aria-label={`${f.name} ${f.badge}. View the original post on X`}>
+            <Img img={f.img} alt={`${f.name} ${f.badge} announcement`} />
           </a>
           <a className="inline-link" href={f.href} {...ext}>View the original post <I.Ext /></a>
         </Post>
       ))}
-      {more && rest.map((w) => (
+      {full && more && rest.map((w) => (
         <Post key={w.name} compact time={dateFromUrl(w.href)}>
-          <p><strong>{w.name}</strong>: {w.result} <span className="badge badge-dim">{w.type}</span></p>
+          <p><Hover name={w.name}><strong>{w.name}</strong></Hover>: {w.result} <span className="badge badge-dim">{w.type}</span></p>
           <a className="inline-link" href={w.href} {...ext}>View the original post <I.Ext /></a>
         </Post>
       ))}
-      <button className="show-more" onClick={() => setMore(!more)} aria-expanded={more}>
-        {more ? 'Show fewer posts' : `Show ${rest.length} more wins`}
-      </button>
+      {full && (
+        <button className="show-more" onClick={() => setMore(!more)} aria-expanded={more}>
+          {more ? 'Show fewer posts' : `Show ${rest.length} more wins`}
+        </button>
+      )}
     </section>
   )
 }
@@ -264,9 +392,40 @@ function ShippedBlock() {
       ))}
       <Post>
         <p>Current roles:</p>
-        <ul className="roles">{roles.map((r) => <li key={r.name}><strong>{r.name}</strong><span className="dim">{r.role}</span></li>)}</ul>
+        <ul className="roles">{roles.map((r) => <li key={r.name}><Hover name={r.name}><strong>{r.name}</strong></Hover><span className="dim">{r.role}</span></li>)}</ul>
       </Post>
     </section>
+  )
+}
+
+/* X style compose box. No backend: it opens a prefilled X DM, or copies the text and opens Telegram. */
+const IDEAS = ['Launch campaign', 'KOL push', 'AI launch video', 'Community setup']
+function Compose() {
+  const [text, setText] = useState('')
+  const [note, setNote] = useState('')
+  const max = 500
+  const msg = () => (text.trim() ? `Hey ileri, found you on ileri.lol.\n\n${text.trim()}` : 'Hey ileri, found you on ileri.lol. I want to talk about my project.')
+  const add = (idea) => setText((t) => (t.includes(idea) ? t : `${t}${t && !t.endsWith(' ') ? ' ' : ''}Interested in: ${idea}.`))
+  const toTelegram = () => {
+    navigator.clipboard?.writeText(msg()).then(() => setNote('Message copied. Paste it in Telegram.')).catch(() => {})
+    window.open(TG_URL, '_blank', 'noopener')
+  }
+  const left = max - text.length
+  return (
+    <div className="compose" id="compose">
+      <Avatar size={40} />
+      <div className="compose-main">
+        <label htmlFor="compose-text" className="sr-only">What's your project?</label>
+        <textarea id="compose-text" rows={3} maxLength={max} placeholder="What's your project?" value={text} onChange={(e) => setText(e.target.value)} />
+        <div className="compose-ideas">{IDEAS.map((i) => <button key={i} type="button" onClick={() => add(i)}>+ {i}</button>)}</div>
+        <div className="compose-bar">
+          <span className={`compose-count${left < 40 ? ' warn' : ''}`} aria-live="polite">{left < 100 ? left : ''}</span>
+          <button type="button" className="btn btn-outline btn-sm" onClick={toTelegram}><I.Send size={14} /> Telegram</button>
+          <a className="btn btn-accent btn-sm" href={`${DM_URL}&text=${encodeURIComponent(msg())}`} {...ext}>Post to DM</a>
+        </div>
+        {note && <p className="dim compose-note" role="status">{note}</p>}
+      </div>
+    </div>
   )
 }
 
@@ -274,8 +433,10 @@ function ContactBlock() {
   return (
     <section id="contact" aria-label="Contact">
       <Post label="Contact">
-        <p>Got something early? Send me a DM.</p>
-        <p>Tell me what you're building and what you need. I'll tell you straight if I can help.</p>
+        <p>Got something early? Tell me what you're building and what you need. I'll tell you straight if I can help.</p>
+      </Post>
+      <Compose />
+      <div className="contacts-wrap">
         <div className="card contacts">
           {contacts.map((c) => (
             <a key={c.label} href={c.href} {...(c.href.startsWith('http') ? ext : {})} className={c.primary ? 'primary' : ''}>
@@ -283,7 +444,7 @@ function ContactBlock() {
             </a>
           ))}
         </div>
-      </Post>
+      </div>
       <p className="end">You're all caught up ✨</p>
     </section>
   )
@@ -292,30 +453,49 @@ function ContactBlock() {
 function MediaGrid() {
   return (
     <section id="media" className="media-grid" aria-label="Media">
+      {videos.map((v) => (
+        <a key={v.id} href={v.href} {...ext} className="tile tile-video">
+          <img src={v.thumb} alt={`${v.label} by ileri, video still`} width="320" height={Math.round(320 * v.h / v.w)} loading="lazy" decoding="async" />
+          <span className="play" aria-hidden="true"><I.Play size={22} /></span>
+          <span>{v.label}</span>
+        </a>
+      ))}
       {receipts.map((r) => (
         <a key={r.name} href={r.href} {...ext} className="tile">
-          <img src={r.img} alt={`${r.name} ${r.label} screenshot`} loading="lazy" />
+          <img src={r.img.src} width={r.img.w} height={r.img.h} alt={`${r.name} ${r.label} screenshot`} loading="lazy" decoding="async" />
           <span>{r.name} · {r.label}</span>
         </a>
       ))}
-      <a href={AI_VIDEO_URL} {...ext} className="tile tile-video">
-        <span className="play">▶</span>
-        <span>AI video · recent work</span>
-      </a>
     </section>
   )
 }
 
 function ProfileHeader({ tab, setTab }) {
+  const refs = useRef([])
+  const onKey = (e, i) => {
+    let n = null
+    if (e.key === 'ArrowRight') n = (i + 1) % TABS.length
+    if (e.key === 'ArrowLeft') n = (i - 1 + TABS.length) % TABS.length
+    if (e.key === 'Home') n = 0
+    if (e.key === 'End') n = TABS.length - 1
+    if (n === null) return
+    e.preventDefault()
+    setTab(TABS[n].id)
+    refs.current[n]?.focus()
+  }
   return (
     <div className="profile" id="top">
       <div className="banner">
-        <img src={BANNER} alt="ileri's X banner" width="1500" height="500" />
+        <img src={BANNER} srcSet={`${BANNER_SM} 640w, ${BANNER} 1200w`} sizes="(max-width: 700px) 100vw, 600px" alt="ileri's X banner" width="1200" height="400" fetchpriority="high" />
       </div>
       <div className="profile-inner">
         <div className="profile-row">
           <img className="profile-avatar" src={AVATAR} alt="ileri's profile picture" width="134" height="134" />
-          <a className="btn btn-light" href={X_URL} {...ext}>Follow</a>
+          <div className="profile-btns">
+            <a className="btn btn-icon btn-outline" href={TG_URL} {...ext} aria-label="Message on Telegram" title="Telegram"><I.Send size={18} /></a>
+            <a className="btn btn-outline" href={X_URL} {...ext}>Follow</a>
+            <a className="btn btn-accent" href={DM_URL} {...ext}>DM me</a>
+          </div>
         </div>
         <h1>{profile.name}</h1>
         <p className="dim">{profile.handle}</p>
@@ -329,9 +509,9 @@ function ProfileHeader({ tab, setTab }) {
           <a href={X_URL} {...ext}><strong>{profile.followers}</strong> <span className="dim">Followers</span></a>
         </p>
       </div>
-      <div className="tabs" role="tablist">
-        {TABS.map((t) => (
-          <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
+      <div className="tabs" role="tablist" aria-label="Profile sections">
+        {TABS.map((t, i) => (
+          <button key={t.id} ref={(el) => { refs.current[i] = el }} id={`tab-${t.id}`} role="tab" aria-selected={tab === t.id} aria-controls="feed-panel" tabIndex={tab === t.id ? 0 : -1} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)} onKeyDown={(e) => onKey(e, i)}>
             <span>{t.label}</span>
           </button>
         ))}
@@ -340,35 +520,74 @@ function ProfileHeader({ tab, setTab }) {
   )
 }
 
-function Sidebar() {
+function Ticker() {
+  const items = wins
+  const [i, setI] = useState(0)
+  const [paused, setPaused] = useState(false)
+  useEffect(() => {
+    if (prefersReducedMotion() || paused) return
+    const t = setInterval(() => setI((x) => (x + 1) % items.length), 3200)
+    return () => clearInterval(t)
+  }, [paused, items.length])
+  const shown = [0, 1, 2].map((k) => items[(i + k) % items.length])
   return (
-    <aside className="right">
-      <a className="search" href="#proof"><I.Search /> <span>Search the receipts</span></a>
-      <div className="box">
-        <h2>What's happening</h2>
-        {roles.map((r) => (
-          <div className="trend" key={r.name}>
-            <span className="dim">Current role</span>
-            <strong>{r.name}</strong>
-            <span className="dim">{r.role}</span>
-          </div>
+    <div className="ticker" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}>
+      {shown.map((w, k) => (
+        <a className="trend" key={`${w.name}-${i}-${k}`} href={w.href} {...ext} style={{ animationDelay: `${k * 60}ms` }}>
+          <span className="dim">{k === 0 ? 'Trending in Wins' : `${w.type} · Trending`}</span>
+          <strong>{w.name}</strong>
+          <span className="dim">{w.result} · {dateFromUrl(w.href)}</span>
+        </a>
+      ))}
+    </div>
+  )
+}
+
+function Display({ theme, setTheme, themes }) {
+  return (
+    <div className="box">
+      <h2 id="display-h">Display</h2>
+      <div className="display" role="radiogroup" aria-labelledby="display-h">
+        {themes.map((t) => (
+          <button key={t} role="radio" aria-checked={theme === t} className={`display-opt display-${t}${theme === t ? ' on' : ''}`} onClick={() => setTheme(t)}>
+            <span className="display-dot" aria-hidden="true" />{THEME_LABELS[t]}
+          </button>
         ))}
-        <div className="trend">
-          <span className="dim">Ecosystems worked with or won in</span>
-          <div className="eco">{ecosystems.map((e) => <span key={e}>{e}</span>)}</div>
+      </div>
+    </div>
+  )
+}
+
+function Sidebar({ go, themeCtl }) {
+  return (
+    <aside className="right" aria-label="Sidebar">
+      <div className="right-inner">
+        <a className="search" href="#proof" onClick={(e) => { e.preventDefault(); go('proof', 'proof') }}><I.Search /> <span>Search the receipts</span></a>
+        <div className="box">
+          <h2>What's happening</h2>
+          <Ticker />
+          {roles.map((r) => (
+            <div className="trend" key={r.name}>
+              <span className="dim">Current role</span>
+              <strong>{r.name}</strong>
+              <span className="dim">{r.role}</span>
+            </div>
+          ))}
+          <button className="show-more box-more" onClick={() => go('proof', 'proof')}>Show all wins</button>
         </div>
+        <Display {...themeCtl} />
+        <div className="box">
+          <h2>Who to follow</h2>
+          {whoToFollow.map((w) => (
+            <a className="wtf" key={w.handle} href={w.href} {...ext}>
+              <Avatar size={40} src={w.avatar} letter={w.letter} />
+              <span className="wtf-text"><strong>{w.name}</strong><span className="dim">{w.handle}</span></span>
+              <span className="btn btn-light btn-sm">{w.cta}</span>
+            </a>
+          ))}
+        </div>
+        <p className="legal dim">© 2026 ILERI · ileri's personal site, styled like a timeline. Not affiliated with any social network.</p>
       </div>
-      <div className="box">
-        <h2>Who to follow</h2>
-        {whoToFollow.map((w) => (
-          <a className="wtf" key={w.handle} href={w.href} {...ext}>
-            <Avatar size={40} src={w.avatar} letter={w.letter} />
-            <span className="wtf-text"><strong>{w.name}</strong><span className="dim">{w.handle}</span></span>
-            <span className="btn btn-light btn-sm">{w.cta}</span>
-          </a>
-        ))}
-      </div>
-      <p className="legal dim">© 2026 ILERI · ileri's personal site, styled like a timeline. Not affiliated with any social network.</p>
     </aside>
   )
 }
@@ -376,28 +595,43 @@ function Sidebar() {
 export default function App() {
   const [tab, setTab] = useState('posts')
   const [scrolled, setScrolled] = useState(false)
+  const [fab, setFab] = useState(false)
   const [active, setActive] = useState('top')
+  const [expanded, setExpanded] = useState(false)
+  const themeCtl = useTheme()
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40)
+    let last = window.scrollY
+    const onScroll = () => {
+      const y = window.scrollY
+      setScrolled(y > 40)
+      // X style: hide the floating button while scrolling down, bring it back on scroll up
+      if (Math.abs(y - last) > 8) {
+        const nearEnd = y + window.innerHeight > document.documentElement.scrollHeight - 700
+        setFab(y < last && y > 600 && !nearEnd)
+        last = y
+      }
+    }
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   const go = (id, nextTab = 'posts') => {
+    if (nextTab === 'posts' && HIDDEN.includes(id)) setExpanded(true)
     setTab(nextTab)
     setActive(id)
-    requestAnimationFrame(() => {
-      const el = document.getElementById(id === 'top' ? 'top' : id)
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const el = document.getElementById(id)
+      if (el) el.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' })
+    }))
   }
   const changeTab = (t) => {
     setTab(t)
     const el = document.querySelector('.tabs')
     if (el && window.scrollY > el.offsetTop) window.scrollTo({ top: el.offsetTop - 53 })
   }
+  const [lead, ...moreVideos] = videos
 
   return (
     <div className="shell">
@@ -407,12 +641,15 @@ export default function App() {
       <nav className="rail" aria-label="Main">
         <a href="#top" className="rail-logo" onClick={(e) => { e.preventDefault(); go('top') }}>ILERI<span>.</span></a>
         {NAV.map(({ id, label, Icon }) => (
-          <a key={id} href={`#${id}`} className={`rail-item${active === id ? ' active' : ''}`} onClick={(e) => { e.preventDefault(); go(id) }}>
+          <a key={id} href={`#${id}`} className={`rail-item${active === id ? ' active' : ''}`} aria-current={active === id ? 'true' : undefined} onClick={(e) => { e.preventDefault(); go(id) }}>
             <Icon size={26} /><span>{label}</span>
           </a>
         ))}
-        <a className="btn btn-accent rail-post" href={X_URL} {...ext}><span>DM me</span><I.Quill size={24} /></a>
-        <a className="rail-me" href={X_URL} {...ext}>
+        <button className="rail-item rail-theme" onClick={themeCtl.cycle} aria-label={`Theme: ${THEME_LABELS[themeCtl.theme]}. Switch theme`}>
+          <I.Theme size={26} /><span>{THEME_LABELS[themeCtl.theme]}</span>
+        </button>
+        <a className="btn btn-accent rail-post" href={DM_URL} {...ext} aria-label="DM me on X"><span>DM me</span><I.Quill size={24} /></a>
+        <a className="rail-me" href={X_URL} {...ext} aria-label="ileri on X">
           <Avatar size={40} />
           <span><strong>{profile.name}</strong><span className="dim">{profile.handle}</span></span>
         </a>
@@ -420,38 +657,47 @@ export default function App() {
 
       <main className="center" id="main">
         <header className={`top-bar${scrolled ? ' scrolled' : ''}`}>
-          <a href="#top" className="mobile-avatar" onClick={(e) => { e.preventDefault(); go('top') }}><Avatar size={32} /></a>
+          <a href="#top" className="mobile-avatar" aria-label="Back to top" onClick={(e) => { e.preventDefault(); go('top') }}><Avatar size={32} /></a>
           <div>
             <strong>{profile.name}</strong>
             <span className="dim">Growth for early AI and crypto projects</span>
           </div>
+          <button className="top-theme" onClick={themeCtl.cycle} aria-label={`Theme: ${THEME_LABELS[themeCtl.theme]}. Switch theme`}><I.Theme size={20} /></button>
         </header>
 
         <ProfileHeader tab={tab} setTab={changeTab} />
 
-        <div className="feed">
+        <div className="feed" id="feed-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} tabIndex={-1}>
           {tab === 'posts' && <>
             <Pinned go={go} />
-            <ArticlePost />
-            <ServicesThread />
-            <PackagesBlock />
-            <HowThread />
+            <VideoPost v={lead} />
             <ProofBlock />
-            <ShippedBlock />
+            <PackagesBlock />
+            {expanded ? <>
+              <ServicesThread />
+              <section id="more-videos" aria-label="More AI videos">{moreVideos.map((v) => <VideoPost key={v.id} v={v} />)}</section>
+              <ArticlePost />
+              <HowThread />
+              <ShippedBlock />
+            </> : (
+              <button className="show-more show-more-big" onClick={() => setExpanded(true)} aria-expanded={false}>
+                Show more posts <span className="dim">services, more AI videos, the AI video article, how it works, builds</span>
+              </button>
+            )}
             <ContactBlock />
           </>}
-          {tab === 'packages' && <><PackagesBlock /><ContactBlock /></>}
-          {tab === 'proof' && <><ProofBlock /><ShippedBlock /></>}
-          {tab === 'media' && <><ArticlePost pinned={false} /><MediaGrid /></>}
+          {tab === 'packages' && <><PackagesBlock /><ServicesThread /><HowThread /><ContactBlock /></>}
+          {tab === 'proof' && <><ProofBlock full /><ShippedBlock /><ContactBlock /></>}
+          {tab === 'media' && <>{videos.map((v) => <VideoPost key={v.id} v={v} />)}<ArticlePost /><MediaGrid /></>}
         </div>
       </main>
 
-      <Sidebar />
+      <Sidebar go={go} themeCtl={themeCtl} />
 
-      <a className="fab" href={X_URL} {...ext} aria-label="DM me"><I.Quill size={24} /></a>
+      <a className={`fab${fab ? '' : ' fab-hide'}`} href={DM_URL} {...ext} aria-label="DM me on X"><I.Quill size={24} /></a>
       <nav className="bottom-bar" aria-label="Mobile">
-        {MOBILE_NAV.map(({ id, label, Icon }) => (
-          <a key={id} href={`#${id}`} aria-label={label} className={active === id ? 'active' : ''} onClick={(e) => { e.preventDefault(); go(id) }}>
+        {NAV.map(({ id, label, Icon }) => (
+          <a key={id} href={`#${id}`} aria-label={label} aria-current={active === id ? 'true' : undefined} className={active === id ? 'active' : ''} onClick={(e) => { e.preventDefault(); go(id) }}>
             <Icon size={24} />
           </a>
         ))}
