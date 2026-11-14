@@ -4,6 +4,7 @@ import {
   featured, builds, wins, receipts, roles, contacts, profile, whoToFollow, article,
 } from './data.js'
 import * as I from './icons.jsx'
+import Background from './Background.jsx'
 
 const ext = { target: '_blank', rel: 'noopener noreferrer' }
 
@@ -400,6 +401,7 @@ export default function App() {
 
   return (
     <div className="shell">
+      <Background />
       <a href="#main" className="skip">Skip to content</a>
 
       <nav className="rail" aria-label="Main">
